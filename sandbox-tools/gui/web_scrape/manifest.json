@@ -1,0 +1,1 @@
+{"name":"web_scrape","tier":"gui","entrypoint":"scrape.py","timeout":120}
