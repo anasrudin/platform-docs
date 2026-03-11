@@ -1,0 +1,1 @@
+{"name":"docx_generate","tier":"wasm","entrypoint":"docx_generate.wasm","timeout":30}
