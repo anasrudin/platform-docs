@@ -1,0 +1,86 @@
+# sandbox-tools — Cline Rules
+
+## READ EVERY SESSION
+Before doing anything, read all files in order:
+1. memory-bank/projectbrief.md
+2. memory-bank/productContext.md
+3. memory-bank/techContext.md
+4. memory-bank/systemPatterns.md
+5. memory-bank/activeContext.md
+6. memory-bank/progress.md
+
+---
+
+## LANGUAGE
+- All code, comments, variable names: **English**
+- Log/error messages in code: **English**
+
+---
+
+## TOOL CONTRACT — NON-NEGOTIABLE
+
+1. Every tool directory **must** have `manifest.json` — platform won't load it without one
+2. `name` in manifest **must exactly match** the directory name
+3. `entrypoint` in manifest **must exactly match** the filename in the directory
+4. All output goes to **stdout as a single JSON line** — nothing else
+5. Input comes from `TOOL_INPUT` env var (Python/Shell) or `os.Args[1]` (WASM)
+6. Output JSON **must contain** `"exit_code"` field
+7. **Never** print debug output to stdout — use stderr: `sys.stderr.write("debug\n")`
+8. **Never** access paths outside `/work/` — always use `safe_path()` for user-provided paths
+
+---
+
+## ADDING A NEW TOOL
+
+```
+[ ] mkdir sandbox-tools/{tier}/{tool_name}/
+[ ] Write manifest.json  (all required fields, name == dir name)
+[ ] Write entrypoint     (test locally first)
+[ ] Test:  TOOL_INPUT='{"key":"val"}' python3 main.py
+[ ] Check: stdout is valid JSON with exit_code
+[ ] Register in sandbox-platform: internal/tool/registry/registry.go
+[ ] Add routing: sandbox-platform: internal/router/rules.go
+[ ] Update: memory-bank/progress.md
+```
+
+---
+
+## PYTHON TOOLS
+
+- Always parse TOOL_INPUT at the top — if it fails, print error JSON and return
+- Always use the `out()` helper — never call `print()` directly
+- Always use `safe_path()` for any user-supplied file path
+- Use `subprocess.run(..., capture_output=True, text=True)` — never `os.system()`
+- Playwright: always pass `--no-sandbox --disable-dev-shm-usage`, always close browser in `finally`
+
+---
+
+## WASM TOOLS (Go)
+
+- Build tag: `//go:build wasip1` — NOT `js && wasm`
+- Compile: `GOOS=wasip1 GOARCH=wasm go build -o {name}.wasm .`
+- Input: `os.Args[1]` (not env var)
+- No CGO, no external libraries that require CGO
+- Output: `fmt.Println(string(jsonBytes))` — single line
+
+---
+
+## FORBIDDEN IN ALL TOOLS
+
+| What | Why |
+|------|-----|
+| `print("debug")` to stdout | Breaks JSON parsing |
+| `os.path.join("/", user_path)` without `safe_path()` | Path traversal risk |
+| `sys.exit()` before printing output | Agent gets empty result |
+| Hardcoded absolute paths outside `/work/`, `/tool/`, `/tmp/` | Will fail in sandbox |
+| Importing from another tool's directory | Tools are isolated units |
+
+---
+
+## UPDATE MEMORY BANK
+
+After any significant change:
+- Added/modified a tool → update `progress.md`
+- New pattern discovered → update `systemPatterns.md`
+- New bug found → update `activeContext.md`
+- Completed a known issue → update `activeContext.md` + `progress.md`
