@@ -1,0 +1,1 @@
+{"name":"markdown_convert","tier":"wasm","entrypoint":"markdown_convert.wasm","timeout":10}
