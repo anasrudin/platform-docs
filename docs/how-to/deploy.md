@@ -105,6 +105,8 @@ This applies:
 - MinIO bucket creation and policies
 - Day 1-2 verification checks
 
+If you plan to use the current real Wasmtime path, also ensure the bucket referenced by `MINIO_WASM_BUCKET` exists. The runtime currently defaults to `platform-modules`, which is separate from the buckets created by `infra/minio/init-buckets.sh`.
+
 ### Phase 5: Firecracker runtime bootstrap
 
 Run on `node2` and `node3`:
@@ -157,7 +159,8 @@ Deployment should be considered successful when all of the following are true:
 
 - application-level deployment for all control-plane services is still evolving
 - runtime host agents are not yet fully documented as Nomad jobs for the cluster path
-- some runtime paths remain stubbed in the current MVP implementation
+- GUI runtime and isolation hardening remain future work in the current MVP implementation
+- bucket naming between the WASM module store and the MinIO bootstrap script still needs consolidation
 - security hardening, billing, and multi-region concerns are outside the current deployment scope
 
 ## Related documents

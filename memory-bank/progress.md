@@ -1,6 +1,6 @@
 # Progress
 
-> Last updated: 2026-03-11 — Day 1-2 + Day 3 infra implemented
+> Last updated: 2026-03-11 — Week 1 complete (Day 1–7)
 
 ## Platform Capabilities
 
@@ -30,11 +30,11 @@
 
 | Engine | Status |
 |---|---|
-| WASM runtime (Wasmtime) | 🚧 Local stub — Day 6 target |
-| Firecracker runtime | 🚧 Local stub — test-firecracker.sh ready for Day 3 verification |
+| WASM runtime (Wasmtime) | ✅ Real implementation — Wasmtime CLI + MinIO module cache |
+| Firecracker runtime | ✅ Real implementation — pool + vsock + snapshot restore |
 | GUI runtime (Chromium) | 🚧 Local stub — Day 15 target |
-| Snapshot builder | 🔲 Day 4 target |
-| Warm pool manager | 🔲 Day 13 target |
+| Snapshot builder | ✅ tools/snapshot-builder/ — python-v1, build+upload pipeline |
+| Warm pool manager | ✅ pool.go — in-process VM pool, Day 5 complete |
 
 ### Control Plane
 
@@ -71,7 +71,7 @@
 - Full architecture documentation + Memory Bank
 - Minimal local dev environment (`make dev`, `make dev-nomad`)
 - API Server with session + routing logic (PostgreSQL + Redis)
-- Stubbed WASM, FC, GUI agents via Redis queue
+- Redis-backed agent execution path, with real WASM and Firecracker implementations and a stubbed GUI path
 - E2E test script (`test-e2e.sh`)
 - **[Day 1-2]** Production Nomad cluster configs (`infra/nomad/server.hcl`, `client.hcl`)
 - **[Day 1-2]** Node setup scripts (`setup-all-nodes.sh`, `setup-control-node.sh`)
@@ -80,6 +80,21 @@
 - **[Day 1-2]** Nomad systemd service unit + Day 1-2 verification script
 - **[Day 3]** Firecracker + KVM setup script (`setup-firecracker.sh`)
 - **[Day 3]** Firecracker 3-goal test script (`test-firecracker.sh`) — verifies version, /dev/kvm, VM boot
+- **[Day 4]** `tools/snapshot-builder/` — snapshot-builder.sh, build-rootfs.sh, upload-minio.sh, config/python-v1.env
+- **[Day 4]** Guest agent Python embedded in rootfs (`/opt/agent/agent.py`) — vsock/TCP, dispatches python_run/bash_run/echo
+- **[Day 4]** Snapshot builder test suite — 26/26 tests pass, no KVM/Docker required
+- **[Day 5]** Real Firecracker runtime (`runtime/firecracker/`) — pool, vm, snapshot, guest, vsock
+- **[Day 5]** Auto-detect mode: `/dev/kvm` → real, no KVM → sim with graceful fallback
+- **[Day 5]** FC pipeline test script (`scripts/test-fc-pipeline.sh`) — 9/9 unit tests pass
+- **[Day 6]** Real WASM runtime (`runtime/wasm/runtime.go` + `module_store.go`) — Wasmtime CLI subprocess, sim fallback
+- **[Day 6]** `ModuleStore` — MinIO `platform-modules` bucket, local cache `/var/sandbox/wasm-cache/`
+- **[Day 6]** Auto-detect: `WASM_MODE` env → wasmtime in PATH → sim fallback
+- **[Day 7]** Artifact store (`internal/artifacts/store.go`) — Upload/Download via `mc`, HTTP fallback
+- **[Day 7]** `POST /artifacts` + `GET /artifacts/{key}` endpoints in platform-api
+- **[Day 7]** `ArtifactUploadResponse` + `ArtifactMeta` types added to `pkg/types/types.go`
+- **[Day 7]** WASM pipeline test script (`scripts/test-wasm-pipeline.sh`) — 7/7 unit tests pass
+- **[Example]** Nomad Python runtime sample (`examples/python-runtime-sandbox/`) — builds or stubs Firecracker assets, submits `fc-agent` to Nomad, and verifies `python_run`
+- **[Example]** `run-test-nomad.sh` verified on 2026-03-11 in `firecracker-sim` mode — successful Nomad deploy, API execution, and cleanup
 
 ## Makefile Infra Targets
 
@@ -95,6 +110,4 @@
 
 ## What's Next
 
-- **Day 4** — Snapshot Builder: boot Firecracker VM, run bootstrap script, create snapshot, upload to MinIO
-- **Day 5** — fc-agent with real VM pool (replace stub with actual Firecracker execution)
-- **Day 6** — WASM agent with real Wasmtime execution + MinIO module cache
+- **Week 2** — Control plane: API gateway auth + rate limiting, session manager, tool registry, warm-pool management, Prometheus + Grafana monitoring

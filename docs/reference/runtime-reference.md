@@ -11,7 +11,7 @@
 
 The platform executes untrusted workloads across three runtime tiers: WASM, Firecracker, and GUI automation. The control plane owns business logic, policy, routing, and artifact handling. Nomad is used for placement and lifecycle orchestration, not for application-specific orchestration logic.
 
-The current delivery phase is focused on validating the runtime model through a local sandbox before full production hardening. WASM has a minimal local path today. Firecracker and GUI paths are present but still maturing toward real isolated execution.
+Week 1 runtime foundation is complete. WASM and Firecracker now have real implementations, each with capability-aware fallback behavior for constrained development environments. The GUI path remains stubbed while Week 2 moves into control-plane work and Week 3 targets isolation and browser-runtime maturity.
 
 ## System boundaries
 
@@ -86,21 +86,20 @@ Status as of March 11, 2026:
 | Documentation set | Stable |
 | API gateway | Minimal local implementation |
 | Session manager | Minimal local implementation |
-| WASM runtime | Minimal local implementation |
-| Firecracker runtime | Stubbed execution path |
+| WASM runtime | Real implementation with Wasmtime CLI and MinIO-backed module cache |
+| Firecracker runtime | Real implementation with snapshot restore, pool management, and guest transport |
 | GUI runtime | Stubbed execution path |
 | Tool registry | Not started |
-| MinIO artifact integration | Not started |
+| MinIO artifact integration | Basic implementation for snapshots, modules, and artifacts |
 | Network and filesystem isolation | Not started |
 
 ## Current engineering focus
 
-- simple API server with routing logic
-- PostgreSQL and Redis through Docker Compose
-- Redis-backed job queues
-- local WASM, Firecracker, and GUI agents
-- smoke-test coverage through `test-e2e.sh`
-- Nomad-backed local validation for the Firecracker path
+- API gateway authentication and rate limiting
+- tool registry discovery API
+- Prometheus and Grafana monitoring
+- continued stabilization of the local WASM and Firecracker paths
+- preparation for GUI runtime and isolation work in Week 3
 
 ## Milestone alignment
 

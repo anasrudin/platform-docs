@@ -80,6 +80,25 @@ type HealthResponse struct {
 	Services map[string]string `json:"services"`
 }
 
+// ArtifactMeta describes an uploaded artifact.
+type ArtifactMeta struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	SessionID   string `json:"session_id,omitempty"`
+	Key         string `json:"key"`         // MinIO key: <id>/<name>
+	URL         string `json:"url"`         // direct MinIO URL
+	Size        int64  `json:"size"`
+	ContentType string `json:"content_type"`
+}
+
+// ArtifactUploadResponse is returned by POST /artifacts.
+type ArtifactUploadResponse struct {
+	ArtifactID string `json:"artifact_id"`
+	Key        string `json:"key"`
+	URL        string `json:"url"`
+	Size       int64  `json:"size"`
+}
+
 // RuntimeResult is returned by any runtime executor.
 type RuntimeResult struct {
 	Stdout   string `json:"stdout"`

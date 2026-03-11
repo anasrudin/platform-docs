@@ -73,6 +73,66 @@ paths:
           description: Method not allowed
         '500':
           description: Internal server error
+  /artifacts:
+    post:
+      summary: Upload an artifact
+      operationId: uploadArtifact
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                session_id:
+                  type: string
+                name:
+                  type: string
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Artifact uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArtifactUploadResponse'
+        '400':
+          description: Invalid multipart request
+        '405':
+          description: Method not allowed
+        '500':
+          description: Upload failure
+  /artifacts/{key}:
+    get:
+      summary: Download an artifact
+      operationId: downloadArtifact
+      parameters:
+        - name: key
+          in: path
+          required: true
+          description: |
+            Artifact object key. The current implementation accepts the full path segment after /artifacts/,
+            including nested slash-separated values.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Artifact content stream
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Missing artifact key
+        '405':
+          description: Method not allowed
+        '500':
+          description: Download failure
 components:
   schemas:
     Tier:
@@ -150,3 +210,20 @@ components:
           type: object
           additionalProperties:
             type: string
+    ArtifactUploadResponse:
+      type: object
+      required:
+        - artifact_id
+        - key
+        - url
+        - size
+      properties:
+        artifact_id:
+          type: string
+        key:
+          type: string
+        url:
+          type: string
+        size:
+          type: integer
+          format: int64

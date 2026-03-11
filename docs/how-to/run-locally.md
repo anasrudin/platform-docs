@@ -70,6 +70,8 @@ The smoke test validates:
 - WASM execution path
 - GUI execution path
 
+If you want real Wasmtime execution instead of simulation fallback, ensure the bucket referenced by `MINIO_WASM_BUCKET` exists. The current runtime default is `platform-modules`.
+
 ## Run with local Nomad
 
 To run `fc-agent` through a local Nomad cluster:
@@ -101,6 +103,8 @@ make stop
 
 - API health responds successfully on port `8080`
 - queues and session flow work in the local sandbox
-- Firecracker and GUI paths may still use stubbed runtime behavior depending on current implementation state
+- WASM and Firecracker can use real execution paths when host capabilities and dependencies are present
+- GUI currently remains a stubbed path in the local MVP
+- real WASM execution also depends on a populated module bucket in MinIO
 
 For the current architecture and maturity model, see [../reference/runtime-reference.md](../reference/runtime-reference.md).

@@ -153,3 +153,103 @@
 1. Keep new docs synced by updating memory-bank files first.
 2. Implement the Tool Registry and runtime integrations described in the memory bank.
 3. Replace Firecracker and GUI stubs with real runtime behavior.
+
+---
+
+## Session 005 — 2026-03-11
+
+**Agent:** Codex  
+**Duration:** ~25 minutes
+
+### Changes Implemented
+
+1. Added `examples/python-runtime-sandbox/` as a concrete Nomad-first example for the Firecracker-backed Python runtime flow.
+2. Created `run-test-nomad.sh` to:
+   - start a local Nomad cluster if needed
+   - build `sandbox-platform` binaries
+   - bring up Docker-backed dependencies when needed
+   - prepare real or placeholder Firecracker snapshot assets
+   - submit `fc-agent` as a Nomad job
+   - start `platform-api` locally if absent
+   - execute and verify `python_run`
+   - clean up only the resources it started
+3. Added `sandbox-python.nomad.hcl.tpl` as the Nomad job-spec equivalent of the previously referenced Kubernetes manifest.
+4. Added `python-runtime.env` so the example has a dedicated snapshot-builder config.
+5. Updated memory-bank status files to register the new operational example.
+
+### Files Modified
+
+- `examples/python-runtime-sandbox/README.md` (new)
+- `examples/python-runtime-sandbox/run-test-nomad.sh` (new)
+- `examples/python-runtime-sandbox/sandbox-python.nomad.hcl.tpl` (new)
+- `examples/python-runtime-sandbox/python-runtime.env` (new)
+- `memory-bank/activeContext.md` (updated)
+- `memory-bank/progress.md` (updated)
+- `memory-bank/development-log.md` (updated)
+
+### Notes
+
+- The example follows the repo's Nomad architecture rather than trying to preserve a Kubernetes or kind control flow that does not exist here.
+- Real Firecracker execution still depends on Linux + KVM + Firecracker. The example degrades to `FC_MODE=sim` so the smoke test remains runnable on constrained local environments.
+
+---
+
+## Session 006 — 2026-03-11
+
+**Agent:** Codex  
+**Duration:** ~20 minutes
+
+### Changes Implemented
+
+1. Executed `./examples/python-runtime-sandbox/run-test-nomad.sh` end-to-end against the local Nomad sandbox flow.
+2. Found and fixed two issues in `run-test-nomad.sh`:
+   - stale repo-managed Nomad pidfiles could interfere with reruns
+   - the `python_run` smoke test built invalid JSON when embedding Python code
+3. Re-ran the example successfully after the fixes.
+4. Confirmed the validated execution path is currently `FC_MODE=sim`, with Nomad job submission, `platform-api` execution, smoke-test success, and cleanup all working.
+
+### Files Modified
+
+- `examples/python-runtime-sandbox/run-test-nomad.sh` (updated)
+- `memory-bank/activeContext.md` (updated)
+- `memory-bank/progress.md` (updated)
+- `memory-bank/development-log.md` (updated)
+
+### Validation Notes
+
+- Successful run date: 2026-03-11
+- Verified behavior:
+  - local Nomad job became healthy
+  - `python_run` returned `status=completed`
+  - example cleanup removed the Nomad job and temporary local processes
+- Verification scope:
+  - validated in `firecracker-sim`
+  - not yet a proof of real Firecracker microVM boot on Linux/KVM
+
+---
+
+## Session 007 — 2026-03-11
+
+**Agent:** Codex  
+**Duration:** ~20 minutes
+
+### Changes Implemented
+
+1. Strengthened `memory-bank/documentation-sync-rules.md` so the root `memory-bank/` is explicitly the only canonical status source for public docs.
+2. Marked `sandbox-platform/memory-bank/` and `sandbox-tools/memory-bank/` as non-canonical inputs for `docs/`.
+3. Updated `docs/README.md` so the public documentation workflow explicitly requires roadmap sync on every done / not-done change.
+4. Refactored `docs/operations/roadmap.md` into a checklist-oriented delivery view so a human reader can immediately see what is complete and what is still pending.
+5. Synced `memory-bank/milestone-timeline.md` so the Week 1 validation list matches the new public roadmap checklist.
+
+### Files Modified
+
+- `memory-bank/documentation-sync-rules.md` (updated)
+- `memory-bank/milestone-timeline.md` (updated)
+- `docs/README.md` (updated)
+- `docs/operations/roadmap.md` (updated)
+- `memory-bank/development-log.md` (updated)
+
+### Notes
+
+- The roadmap checklist is now the public summary for delivery status.
+- Status updates must still originate from the root `memory-bank/`, not from subproject copies.

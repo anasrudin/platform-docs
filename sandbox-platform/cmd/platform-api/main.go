@@ -10,11 +10,15 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
+	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 	"github.com/redis/go-redis/v9"
+	"github.com/sandbox/platform/internal/artifacts"
 	"github.com/sandbox/platform/internal/queue"
 	"github.com/sandbox/platform/internal/router"
 	"github.com/sandbox/platform/internal/session"
@@ -59,8 +63,24 @@ func main() {
 		os.Exit(1)
 	}
 	defer rdb.Close()
-	
+
 	qc := queue.NewClient(rdb)
+
+	// Initialize artifact store
+	artCfg := artifacts.ConfigFromEnv()
+	if artCfg.LocalDir == "" &&
+		!artifacts.MCAvailable() &&
+		(strings.Contains(artCfg.Endpoint, "localhost") || strings.Contains(artCfg.Endpoint, "127.0.0.1")) {
+		artCfg.LocalDir = filepath.Join(os.TempDir(), "platform-artifacts")
+		slog.Info("artifact store falling back to local filesystem",
+			"dir", artCfg.LocalDir,
+			"endpoint", artCfg.Endpoint)
+	}
+	artStore := artifacts.New(artCfg)
+	// Best-effort bucket creation (non-fatal if mc not installed yet).
+	if err := artStore.EnsureBucket(); err != nil {
+		slog.Warn("artifact bucket init skipped", "err", err)
+	}
 
 	// Initialize Router
 	r := router.New(qc)
@@ -70,7 +90,7 @@ func main() {
 	// Health endpoint
 	mux.HandleFunc("/health", func(w http.ResponseWriter, req *http.Request) {
 		status := make(map[string]string)
-		
+
 		dbStatus := "healthy"
 		if err := db.Ping(); err != nil {
 			dbStatus = "unhealthy: " + err.Error()
@@ -223,6 +243,78 @@ func main() {
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(resp)
+	})
+
+	// POST /artifacts — multipart upload: fields "session_id", "name"; file field "file"
+	mux.HandleFunc("/artifacts", func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		// 32 MiB max upload size.
+		if err := req.ParseMultipartForm(32 << 20); err != nil {
+			http.Error(w, "Invalid multipart form: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		sessionID := req.FormValue("session_id")
+		name := req.FormValue("name")
+		if name == "" {
+			name = "artifact"
+		}
+
+		file, header, err := req.FormFile("file")
+		if err != nil {
+			http.Error(w, "Missing file field: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+		defer file.Close()
+
+		if name == "artifact" && header.Filename != "" {
+			name = header.Filename
+		}
+
+		artifactID := uuid.New().String()
+		key, err := artStore.Upload(artifactID, name, file)
+		if err != nil {
+			slog.Error("artifact upload failed", "err", err)
+			http.Error(w, "Upload failed: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		slog.Info("artifact uploaded", "artifact_id", artifactID, "session_id", sessionID, "name", name, "size", header.Size)
+
+		resp := types.ArtifactUploadResponse{
+			ArtifactID: artifactID,
+			Key:        key,
+			URL:        artStore.URL(key),
+			Size:       header.Size,
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	})
+
+	// GET /artifacts/{id}/{name} — download artifact by key.
+	mux.HandleFunc("/artifacts/", func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		// Strip leading "/artifacts/"
+		key := req.URL.Path[len("/artifacts/"):]
+		if key == "" {
+			http.Error(w, "Missing artifact key", http.StatusBadRequest)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/octet-stream")
+		if err := artStore.Download(key, w); err != nil {
+			slog.Error("artifact download failed", "key", key, "err", err)
+			// Header already partially written; log only.
+			return
+		}
 	})
 
 	srv := &http.Server{

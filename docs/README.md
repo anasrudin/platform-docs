@@ -59,6 +59,28 @@ This directory is the public-facing documentation layer for the repository. It i
 - Archive superseded material instead of mixing current and legacy models in the same page.
 - Put reader-facing logs or release notes under `docs/` if they need to be published.
 
+## Synchronization contract
+
+Status-bearing public documents must follow a fixed source-of-truth order:
+
+| Document area | Canonical source |
+|---|---|
+| Current phase, next tasks, blockers | `memory-bank/activeContext.md` |
+| Capability and implementation status | `memory-bank/progress.md` |
+| Milestone completion and validation | `memory-bank/milestone-timeline.md` |
+| Topology and node readiness | `memory-bank/runtime-topology.md` |
+| API contract | `sandbox-platform/cmd/platform-api/main.go` and `sandbox-platform/pkg/types/types.go` |
+| Deployment guide | `sandbox-platform/Makefile` and `sandbox-platform/infra/` |
+
+Before updating public docs, normalize the memory-bank status files first. For the contributor workflow and verification order, use `memory-bank/documentation-sync-rules.md`.
+
+Additional repository rules:
+
+- only the root `memory-bank/` is canonical for public status
+- `sandbox-platform/memory-bank/` and `sandbox-tools/memory-bank/` are not public status sources
+- any done / not-done change must update `docs/operations/roadmap.md` in the same sync pass
+- the roadmap checklist is the public at-a-glance view for completed versus pending work
+
 ## Internal source material
 
 Internal planning artifacts remain available elsewhere in the repository. Reader-facing documents should summarize stable conclusions rather than lead with internal workflow terminology.

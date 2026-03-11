@@ -2,6 +2,8 @@
 
 > Last updated: 2026-03-11
 
+Statuses below represent implementation readiness and documented node roles, not proof that every service is running live on every node at this moment.
+
 ## Cluster Overview
 
 ```
@@ -19,13 +21,13 @@ node3  →  Runtime (Firecracker + GUI)
 **Services:**
 | Service | Port | Status |
 |---|---|---|
-| API Gateway | 8080 | 🔲 |
+| API Gateway | 8080 | 🚧 |
 | Control Plane | 8090 | 🔲 |
 | Tool Registry | 8081 | 🔲 |
-| PostgreSQL | 5432 | 🔲 |
-| Redis | 6379 | 🔲 |
-| MinIO | 9000 (API) / 9001 (Console) | 🔲 |
-| Nomad Server | 4646 / 4647 / 4648 | 🔲 |
+| PostgreSQL | 5432 | ✅ |
+| Redis | 6379 | ✅ |
+| MinIO | 9000 (API) / 9001 (Console) | ✅ |
+| Nomad Server | 4646 / 4647 / 4648 | ✅ |
 | Prometheus | 9090 | 🔲 |
 | Grafana | 3000 | 🔲 |
 
@@ -37,10 +39,10 @@ node3  →  Runtime (Firecracker + GUI)
 **Services:**
 | Service | Status |
 |---|---|
-| wasm-host-agent | 🔲 |
-| fc-host-agent | 🔲 |
-| Firecracker + jailer | 🔲 |
-| Wasmtime | 🔲 |
+| wasm-host-agent | 🚧 |
+| fc-host-agent | ✅ |
+| Firecracker + jailer | ✅ |
+| Wasmtime | ✅ |
 
 **Resources:**
 | Resource | Capacity |
@@ -65,10 +67,10 @@ node3  →  Runtime (Firecracker + GUI)
 **Services:**
 | Service | Status |
 |---|---|
-| fc-host-agent | 🔲 |
-| gui-host-agent | 🔲 |
-| Firecracker + jailer | 🔲 |
-| Chromium + Playwright | 🔲 |
+| fc-host-agent | ✅ |
+| gui-host-agent | 🚧 |
+| Firecracker + jailer | ✅ |
+| Chromium + Playwright | 🚧 |
 | WebSocket stream server | 🔲 |
 
 **Resources:**

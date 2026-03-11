@@ -11,7 +11,7 @@
 
 The platform is a multi-runtime execution system designed to run untrusted workloads through specialized runtime paths. It combines a control plane for policy and routing with Nomad for placement and host agents for runtime-specific execution.
 
-The current delivery phase is centered on proving the execution model through a local sandbox, then expanding toward a production-ready system with stronger isolation, artifact handling, and richer control-plane capabilities.
+Week 1 runtime foundation is complete. The current delivery phase is now centered on control-plane capabilities such as auth, rate limiting, discovery, and monitoring, while preserving the completed runtime foundation as the baseline for future isolation and GUI work.
 
 ## What the platform does
 
@@ -28,17 +28,18 @@ The platform supports three execution tiers:
 - a reader-facing documentation set under `docs/`
 - a local sandbox under `sandbox-platform/`
 - minimal API, session, and routing behavior for local validation
-- stubbed Firecracker and GUI execution paths with a minimal WASM path
+- real Firecracker and WASM execution paths with development-environment fallbacks
+- artifact, snapshot, and module flows backed by MinIO integration
+- a stubbed GUI execution path
 - a documented three-week MVP roadmap
 
 ## What comes next
 
 The current roadmap prioritizes:
 
-- Firecracker snapshot-based execution
-- real Wasmtime execution
-- MinIO-backed artifact handling
+- API gateway authentication and rate limiting
 - tool registry and skill-based routing
+- observability through Prometheus and Grafana
 - GUI execution hardening and isolation
 
 Use [../operations/roadmap.md](../operations/roadmap.md) for the milestone plan and [../architecture/system-overview.md](../architecture/system-overview.md) for the end-to-end system view.

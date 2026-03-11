@@ -9,7 +9,7 @@
 
 ## Executive summary
 
-The current API surface is intentionally small. It exposes three endpoints for health checks, session creation, and tool execution. The current implementation is a local MVP API, not a finalized public contract.
+The current API surface is intentionally small. It exposes endpoints for health checks, session creation, tool execution, and artifact upload or download. The current implementation is a local MVP API, not a finalized public contract.
 
 ## Base URL and conventions
 
@@ -27,6 +27,8 @@ The current API surface is intentionally small. It exposes three endpoints for h
 | `GET` | `/health` | Returns service health for the API dependencies |
 | `POST` | `/sessions` | Creates an execution session for a runtime tier |
 | `POST` | `/execute` | Executes a tool, optionally creating a session automatically |
+| `POST` | `/artifacts` | Uploads an artifact to the artifact store |
+| `GET` | `/artifacts/{key}` | Downloads an artifact by object key |
 
 ## `GET /health`
 
@@ -173,6 +175,62 @@ The endpoint still returns `200 OK` when the request is valid but the runtime ex
 | `405` | Method other than `POST` |
 | `500` | Session creation or job persistence failure |
 
+## `POST /artifacts`
+
+Uploads an artifact through multipart form data.
+
+### Request format
+
+`multipart/form-data`
+
+### Form fields
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `session_id` | string | No | Optional session association |
+| `name` | string | No | Defaults to `artifact` or the uploaded filename |
+| `file` | binary | Yes | Multipart file field |
+
+### Example response
+
+`200 OK`
+
+```json
+{
+  "artifact_id": "4f9914c7-2f6d-4636-917c-03c7d987e61e",
+  "key": "4f9914c7-2f6d-4636-917c-03c7d987e61e/output.txt",
+  "url": "http://localhost:9000/platform-artifacts/4f9914c7-2f6d-4636-917c-03c7d987e61e/output.txt",
+  "size": 128
+}
+```
+
+### Error cases
+
+| Status | Condition |
+|---|---|
+| `400` | Invalid multipart body |
+| `400` | Missing file field |
+| `405` | Method other than `POST` |
+| `500` | Artifact upload failure |
+
+## `GET /artifacts/{key}`
+
+Downloads an artifact by key from the configured artifact bucket.
+
+### Behavior
+
+- the current implementation treats everything after `/artifacts/` as the object key
+- keys may contain nested path segments
+- response content type is currently `application/octet-stream`
+
+### Error cases
+
+| Status | Condition |
+|---|---|
+| `400` | Missing artifact key |
+| `405` | Method other than `GET` |
+| `500` | Download failure while streaming the object |
+
 ## Runtime resolution behavior
 
 The current router resolves tools to runtime tiers through in-process routing rules.
@@ -211,6 +269,15 @@ curl -s -X POST http://localhost:8080/execute \
       "url": "https://example.com"
     }
   }' | jq
+```
+
+### Upload an artifact
+
+```bash
+curl -s -X POST http://localhost:8080/artifacts \
+  -F "session_id=sess_123" \
+  -F "name=output.txt" \
+  -F "file=@./output.txt" | jq
 ```
 
 ## Notes and limitations
