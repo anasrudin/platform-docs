@@ -1,0 +1,152 @@
+openapi: 3.1.0
+info:
+  title: Platform Runtime Local API
+  version: 0.1.0-local
+  description: |
+    Current local API surface for the platform runtime sandbox.
+    This describes the repository's present implementation rather than a final public API contract.
+servers:
+  - url: http://localhost:8080
+paths:
+  /health:
+    get:
+      summary: Get service health
+      operationId: getHealth
+      responses:
+        '200':
+          description: All dependencies are healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: One or more dependencies are unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /sessions:
+    post:
+      summary: Create a session
+      operationId: createSession
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSessionRequest'
+      responses:
+        '200':
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateSessionResponse'
+        '400':
+          description: Invalid request body
+        '405':
+          description: Method not allowed
+        '500':
+          description: Internal server error
+  /execute:
+    post:
+      summary: Execute a tool
+      operationId: executeTool
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecuteRequest'
+      responses:
+        '200':
+          description: Execution completed or failed at runtime
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecuteResponse'
+        '400':
+          description: Invalid request body or missing tool
+        '404':
+          description: Session not found
+        '405':
+          description: Method not allowed
+        '500':
+          description: Internal server error
+components:
+  schemas:
+    Tier:
+      type: string
+      enum:
+        - wasm
+        - microvm
+        - gui
+    JobStatus:
+      type: string
+      enum:
+        - pending
+        - running
+        - completed
+        - failed
+    CreateSessionRequest:
+      type: object
+      properties:
+        runtime:
+          $ref: '#/components/schemas/Tier'
+    CreateSessionResponse:
+      type: object
+      required:
+        - session_id
+        - runtime
+        - status
+      properties:
+        session_id:
+          type: string
+        runtime:
+          $ref: '#/components/schemas/Tier'
+        status:
+          type: string
+    ExecuteRequest:
+      type: object
+      required:
+        - tool
+      properties:
+        session_id:
+          type: string
+        tool:
+          type: string
+        input:
+          type: object
+          additionalProperties: true
+    ExecuteResponse:
+      type: object
+      required:
+        - job_id
+        - status
+      properties:
+        job_id:
+          type: string
+        status:
+          $ref: '#/components/schemas/JobStatus'
+        output:
+          type: string
+        error_message:
+          type: string
+        duration_ms:
+          type: integer
+          format: int64
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - version
+        - services
+      properties:
+        status:
+          type: string
+        version:
+          type: string
+        services:
+          type: object
+          additionalProperties:
+            type: string

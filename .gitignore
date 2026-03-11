@@ -1,0 +1,5 @@
+.DS_Store
+
+# sandbox-platform build and runtime outputs
+sandbox-platform/bin/*
+!sandbox-platform/bin/.gitkeep

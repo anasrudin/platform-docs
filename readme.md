@@ -1,155 +1,108 @@
 # platform-docs
 
-Technical documentation for **platform-runtime** and **platform-tools**.
-
-This platform is a multi-engine sandbox runtime that executes workloads across 3 different runtime tiers: WASM, Firecracker, and GUI — running on top of HashiCorp Nomad as the scheduler.
-
----
-
-## Memory Bank
-
-Persistent memory system for multi-agent collaboration. **Every AI agent MUST read all files in `/memory-bank/` before starting work.**
-
-| File | Contents |
+| Field | Value |
 |---|---|
-| [projectbrief.md](./memory-bank/projectbrief.md) | Mission, architecture, constraints |
-| [productContext.md](./memory-bank/productContext.md) | Problem, users, success criteria |
-| [systemPatterns.md](./memory-bank/systemPatterns.md) | Architecture patterns, anti-patterns |
-| [techContext.md](./memory-bank/techContext.md) | Stack, dependencies, security layers |
-| [activeContext.md](./memory-bank/activeContext.md) | Current focus, blockers, next tasks |
-| [progress.md](./memory-bank/progress.md) | Platform capabilities status |
-| [milestone-timeline.md](./memory-bank/milestone-timeline.md) | Milestone status + validation criteria |
-| [architecture-graph.md](./memory-bank/architecture-graph.md) | System diagram + data flows |
-| [runtime-topology.md](./memory-bank/runtime-topology.md) | Node specs, services, scaling path |
-| [tool-registry.md](./memory-bank/tool-registry.md) | All tools, skills, runtime mapping |
-| [decisions.md](./memory-bank/decisions.md) | Architecture decisions log (ADR) |
-| [development-log.md](./memory-bank/development-log.md) | Session history |
+| Status | Active |
+| Audience | Contributors, reviewers, operators |
+| Scope | Repository overview and documentation entry points |
+| Last updated | March 11, 2026 |
 
----
+Documentation workspace and local sandbox for a Nomad-based runtime platform with three execution tiers: WASM, Firecracker, and GUI automation.
 
-## Current Docs
+## Overview
 
-`memory-bank/` is authoritative. `docs/` now contains a compact view derived from the memory bank instead of parallel long-form copies.
+This repository serves two purposes:
 
-| Document | Description |
+- it defines the current documentation set for the platform runtime and tool model
+- it provides a local sandbox for validating API flow, runtime routing, and agent execution
+
+The current platform model keeps business logic in the control plane and uses Nomad for workload placement. Execution is split across specialized runtime paths for fast stateless work, secure untrusted compute, and browser automation.
+
+## Architecture at a glance
+
+| Layer | Responsibility |
 |---|---|
-| [docs/README.md](./docs/README.md) | Compact doc index and maintenance rules |
-| [runtime reference](./docs/runtime/platform-runtime-reference.md) | Current runtime architecture, topology, and MVP status |
-| [runtime roadmap](./docs/runtime/platform-runtime-roadmap.md) | Current phased build roadmap tied to the memory bank |
-| [tools reference](./docs/tools/platform-tools-reference.md) | Current tool model, registry snapshot, and skill routing |
-| [legacy Kubernetes reference](./docs/archive/legacy-kubernetes-reference.md) | Historical K8s/GKE-era context only |
+| Control plane | Session lifecycle, runtime routing, policy, tool selection, artifact coordination |
+| Nomad | Placement, resource scheduling, lifecycle orchestration |
+| WASM runtime | Fast path for small stateless tools |
+| Firecracker runtime | Secure compute path for untrusted code and heavier execution |
+| GUI runtime | Browser and interaction-heavy automation |
+| Shared services | PostgreSQL, Redis or NATS, MinIO |
 
----
+## Repository map
 
-## Local Sandbox (`/sandbox-platform`)
+| Path | Purpose |
+|---|---|
+| `docs/` | Reader-facing documentation for overview, architecture, how-to guides, references, operations, and archive material |
+| `sandbox-platform/` | Local runnable sandbox: API, agents, infrastructure scripts, and smoke tests |
+| `sandbox-tools/` | Tooling and runtime experimentation area |
+| `docker/` | Local container support files |
+| `scripts/` | Repository utility scripts |
+| `memory-bank/` | Internal planning and working context |
 
-Minimal, self-contained local developer environment using standard Go tools without orchestrator overhead.
+## Documentation map
 
-### Prerequisites
+Start with these documents:
 
-To run the local sandbox, you must have the following installed on your machine:
-- **Go** (1.21+) - for building the binaries
-- **Docker & Docker Compose** - for running PostgreSQL and Redis
-- **Nomad** - for running the `fc-agent` in a simulated orchestrator
-  - **macOS:** `brew tap hashicorp/tap && brew install hashicorp/tap/nomad`
-  - **Linux (Ubuntu/Debian):**
-    ```bash
-    wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
-    echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
-    sudo apt update && sudo apt install nomad
-    ```
-- **jq** & **curl** - for parsing JSON output and making API requests in the E2E test script
-  - **macOS:** `brew install jq curl`
-  - **Linux (Ubuntu/Debian):** `sudo apt install jq curl`
+1. [docs/README.md](./docs/README.md)
+2. [docs/overview/platform-overview.md](./docs/overview/platform-overview.md)
+3. [docs/architecture/system-overview.md](./docs/architecture/system-overview.md)
+4. [docs/reference/runtime-reference.md](./docs/reference/runtime-reference.md)
+5. [docs/reference/api-spec.md](./docs/reference/api-spec.md)
+6. [docs/how-to/deploy.md](./docs/how-to/deploy.md)
+7. [docs/operations/roadmap.md](./docs/operations/roadmap.md)
 
-### Commands
+Use [docs/archive/legacy-kubernetes-reference.md](./docs/archive/legacy-kubernetes-reference.md) only for migration history and design background.
 
-Navigate to `/sandbox-platform` and use the following commands:
+## How to start
 
-#### Local Dev
+For detailed setup and validation instructions, use [docs/how-to/run-locally.md](./docs/how-to/run-locally.md).
 
-- `make build` : Build all binaries (`platform-api`, `wasm-agent`, `fc-agent`, `gui-agent`)
-- `make dev` : Run the infrastructure (PostgreSQL + Redis + MinIO) via docker-compose, wait until healthy, then run all binaries locally.
-- `make dev-nomad` : Same as `make dev`, but starts a local **Nomad dev agent** and deploys `fc-agent` as a Nomad job instead of running it bare-metal.
-- `make run` : Run the API service & Agents locally.
-- `make stop` : Stop the local services, Nomad jobs, and backend infrastructure.
-- `make clean` : Clean build files in the `bin/` directory.
+Quick start:
 
-#### Production Infrastructure (GCP Nodes)
-
-Run these on the actual GCP cluster nodes. All scripts are in `infra/`.
-
-**Day 1–2 — Cluster Setup (run on each node, then node1 only):**
-
-| Command | Run on | What it does |
-|---|---|---|
-| `make infra-setup-node` | all 3 nodes | Install Nomad + base deps |
-| `make infra-setup-control` | node1 only | Install PostgreSQL 16 + Redis 7 + MinIO |
-| `make infra-migrate` | node1 only | Apply DB schema migrations |
-| `make infra-buckets` | node1 only | Create MinIO buckets |
-| `make infra-verify` | node1 | Verify all Day 1-2 goals pass |
-
-**Day 3 — Firecracker (run on node2 and node3):**
-
-| Command | Run on | What it does |
-|---|---|---|
-| `make infra-fc-setup` | node2, node3 | Install Firecracker binary + enable KVM + download test assets |
-| `make infra-fc-test` | node2, node3 | Verify: `firecracker --version`, `/dev/kvm`, microVM boot |
-
-### Local Components
-
-1. **`platform-api`** : API Server (`:8080`) for `GET /health`, `POST /sessions` and `POST /execute`. Connects to Postgres & Redis.
-2. **`wasm-agent`** : Local job consumer for the WASM queue. Executes mock modules that return realistic responses.
-3. **`fc-agent`** : Local job consumer for the MicroVM (Firecracker) queue. Currently uses a mock execution stub with artificial delay.
-4. **`gui-agent`** : Local job consumer for the GUI Runtime (Chromium). Currently uses a mock stub.
-
-### Testing & Dashboard
-
-- **End-to-End Test**: After starting the sandbox (with `make dev` or `make dev-nomad`), run `./test-e2e.sh` from the `/sandbox-platform` folder. This script automatically tests the API, session creation, and simulates execution of tools across WASM, Firecracker, and GUI queues.
-- **Nomad Dashboard**: When running `make dev-nomad`, a local Nomad UI is started. You can monitor jobs, resource allocations, and agent health at **[http://localhost:4646](http://localhost:4646)**.
-
----
-
-## Brief Architecture
-
-```
-[Agent / User]
-    │
-    ▼
-[API Gateway]          ← auth, rate limit, tenant routing
-    │
-    ▼
-[Control Plane]        ← session, routing, policy, billing, janitor, audit
-    │
-    ├── [Tool Registry] ← tool discovery, skill mapping, health tracking
-    │
-    ▼
-[Nomad Scheduler]      ← placement, resource packing, lifecycle
-    │
-    ├── [WASM Pool]         wasm-host-agent + Wasmtime
-    ├── [Firecracker Pool]  fc-host-agent + FC + warm VM pool + overlay fs + TAP network
-    └── [GUI Pool]          gui-host-agent + Chromium + stream server
-
-[Shared Infra]
-    ├── PostgreSQL
-    ├── Redis / NATS
-    └── MinIO
+```bash
+cd sandbox-platform
+make dev
 ```
 
-## Runtime Tiers
+The API is expected on `http://localhost:8080`.
 
-| Tier | Runtime | Cold Start | Use Case |
-|---|---|---|---|
-| **WASM** | Wasmtime 22 | < 5ms | Fast, stateless tools |
-| **Firecracker** | microVM + KVM | 20–80ms (snapshot) | Secure, untrusted code |
-| **GUI** | Chromium + Playwright | ~300ms (warm) | Browser automation |
+To stop the sandbox:
 
-## Security Layers
+```bash
+cd sandbox-platform
+make stop
+```
 
-| Layer | Mechanism |
+## Current sandbox components
+
+| Component | Role |
 |---|---|
-| 1 — Runtime | WASM capability sandbox / Firecracker minimal VM |
-| 2 — VM | KVM hypervisor + Firecracker jailer |
-| 3 — Filesystem | Read-only base image + overlay writable layer |
-| 4 — Network | iptables allowlist + tc rate limit + DNS filtering |
-| 5 — Host | seccomp + cgroups + namespaces |
+| `cmd/platform-api` | API server for health checks, sessions, and execution |
+| `cmd/wasm-agent` | WASM runtime worker |
+| `cmd/fc-agent` | Firecracker runtime worker |
+| `cmd/gui-agent` | GUI and browser runtime worker |
+| `infra/` | Node setup, migrations, MinIO bootstrap, and verification scripts |
+| `runtime/` | Runtime implementation by execution tier |
+| `dashboard/` | Sandbox dashboard UI |
+
+## Repository conventions
+
+- Keep reader-facing documents in `docs/`.
+- Put reader-facing logs, rollout notes, or progress documents under `docs/`, not in the root README.
+- Treat `memory-bank/` as internal planning material rather than primary repository documentation.
+- Treat `sandbox-platform/bin/` as rebuildable output.
+
+## Production-oriented targets
+
+`sandbox-platform/Makefile` includes targets for a more production-like environment:
+
+- `make infra-setup-node`
+- `make infra-setup-control`
+- `make infra-migrate`
+- `make infra-buckets`
+- `make infra-verify`
+- `make infra-fc-setup`
+- `make infra-fc-test`
+
+Use those targets only on machines prepared for cluster setup, not on a standard workstation.
