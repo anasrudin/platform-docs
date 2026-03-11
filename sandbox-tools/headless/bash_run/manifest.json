@@ -1,0 +1,1 @@
+{"name":"bash_run","tier":"microvm","entrypoint":"run.py","timeout":60}
