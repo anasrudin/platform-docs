@@ -1,0 +1,29 @@
+# Nomad systemd service unit
+# Deploy to: /etc/systemd/system/nomad.service
+#
+# After deploying:
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable nomad
+#   sudo systemctl start nomad
+#   sudo systemctl status nomad
+
+[Unit]
+Description=HashiCorp Nomad — Cluster Scheduler
+Documentation=https://www.nomadproject.io/docs
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+ExecReload=/bin/kill -HUP $MAINPID
+ExecStart=/usr/bin/nomad agent -config /etc/nomad.d
+KillMode=process
+KillSignal=SIGINT
+LimitNOFILE=65536
+LimitNPROC=infinity
+Restart=on-failure
+RestartSec=2s
+TasksMax=infinity
+OOMScoreAdjust=-1000
+
+[Install]
+WantedBy=multi-user.target

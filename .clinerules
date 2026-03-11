@@ -1,0 +1,117 @@
+# Platform Docs — Cline Rules (Root)
+
+## MEMORY BANK — MANDATORY
+
+Before performing ANY work in this repository, every AI agent MUST:
+
+1. Read ALL files in `/memory-bank/` in this order:
+   - `projectbrief.md` — mission, architecture, constraints
+   - `productContext.md` — problem, users, success criteria
+   - `systemPatterns.md` — architecture patterns, anti-patterns
+   - `techContext.md` — stack, dependencies, security layers
+   - `activeContext.md` — current focus, blockers, next tasks
+   - `progress.md` — platform capabilities status
+   - `milestone-timeline.md` — milestone status + validation criteria
+   - `architecture-graph.md` — system diagram + data flows
+   - `runtime-topology.md` — node specs, services, scaling path
+   - `tool-registry.md` — all tools, skills, runtime mapping
+   - `decisions.md` — architecture decisions log (ADR)
+   - `development-log.md` — session history
+
+2. Identify the current milestone and active tasks from `activeContext.md`
+
+3. Confirm architecture consistency with `architecture-graph.md`
+
+4. Then proceed with development
+
+---
+
+## AGENT TYPES
+
+### Coding Agent (Cline, Claude Code, Cursor, Codex)
+
+Responsibilities:
+- Implement features, fix bugs, create services
+- Follow Memory Bank rules (read before work, update after work)
+- Respect package structure and import rules
+
+### Planning Agent
+
+Responsibilities:
+- Break milestones into tasks
+- Update `activeContext.md`
+- Coordinate development sequence
+
+### Antigravity Agent (Architecture Guardian)
+
+Responsibilities:
+- Verify architectural consistency
+- Prevent structural drift
+- Maintain system patterns
+- Review major repository changes
+
+If architectural violations detected:
+- Update `decisions.md` with explanation
+- Correct `architecture-graph.md`
+- Alert in `activeContext.md`
+
+---
+
+## AFTER COMPLETING WORK
+
+Every agent MUST update the following files after significant work:
+
+| What Changed | Update These Files |
+|---|---|
+| Feature implemented | `progress.md`, `activeContext.md` |
+| Architecture decision | `decisions.md`, `systemPatterns.md` |
+| New bug or issue found | `activeContext.md` |
+| Milestone completed | `milestone-timeline.md`, `progress.md` |
+| Infrastructure changed | `runtime-topology.md` |
+| Tool added/modified | `tool-registry.md`, `progress.md` |
+| Any session work | `development-log.md` (append entry) |
+
+---
+
+## LANGUAGE
+
+- All communication: **English**
+- All code, comments, variables: **English**
+- Memory Bank files: **English**
+
+---
+
+## ARCHITECTURE RULES
+
+1. Nomad is scheduler ONLY — no business logic in Nomad jobs
+2. Control Plane owns ALL business logic (routing, policy, billing)
+3. Host agents are execution-only — no decision making
+4. 3 runtime tiers: WASM (fast), Firecracker (secure), GUI (interactive)
+5. Per-sandbox isolation: network (TAP), filesystem (overlay), process (cgroups)
+6. Tools communicate via `manifest.json` contract
+
+---
+
+## REPO STRUCTURE
+
+```
+platform-docs/
+├── memory-bank/           ← Memory Bank (12 files)
+├── platform-runtime-*.md  ← Runtime documentation
+├── platform-tools-*.md    ← Tools documentation
+├── sandbox-platform/      ← Legacy K8s-based platform (reference)
+├── sandbox-tools/         ← Legacy tools (reference)
+└── .clinerules           ← This file
+```
+
+---
+
+## AUTONOMOUS RECOVERY
+
+If development context is unclear, the agent MUST:
+
+1. Analyze current repository structure
+2. Read all Memory Bank files
+3. Rebuild understanding from `architecture-graph.md`
+4. Check `milestone-timeline.md` for current phase
+5. Resume from `activeContext.md` next tasks

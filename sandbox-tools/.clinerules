@@ -1,13 +1,19 @@
-# sandbox-tools — Cline Rules
+# sandbox-tools — Cline Rules (Nomad Edition)
 
 ## READ EVERY SESSION
 Before doing anything, read all files in order:
 1. memory-bank/projectbrief.md
 2. memory-bank/productContext.md
-3. memory-bank/techContext.md
-4. memory-bank/systemPatterns.md
+3. memory-bank/systemPatterns.md
+4. memory-bank/techContext.md
 5. memory-bank/activeContext.md
 6. memory-bank/progress.md
+7. memory-bank/milestone-timeline.md
+8. memory-bank/architecture-graph.md
+9. memory-bank/runtime-topology.md
+10. memory-bank/tool-registry.md
+11. memory-bank/decisions.md
+12. memory-bank/development-log.md
 
 ---
 
@@ -17,16 +23,46 @@ Before doing anything, read all files in order:
 
 ---
 
+## ARCHITECTURE RULES
+
+1. Tools are organized by runtime tier: `wasm/`, `firecracker/`, `gui/`
+2. Each tool is a self-contained directory with `manifest.json` (or `tool.yaml`)
+3. Tool name in manifest MUST match directory name
+4. Tools communicate via stdin/stdout JSON
+5. Tools MUST NOT access host filesystem outside sandbox
+
+---
+
 ## TOOL CONTRACT — NON-NEGOTIABLE
 
 1. Every tool directory **must** have `manifest.json` — platform won't load it without one
 2. `name` in manifest **must exactly match** the directory name
 3. `entrypoint` in manifest **must exactly match** the filename in the directory
 4. All output goes to **stdout as a single JSON line** — nothing else
-5. Input comes from `TOOL_INPUT` env var (Python/Shell) or `os.Args[1]` (WASM)
+5. Input comes from `TOOL_INPUT` env var (Python/Shell) or stdin
 6. Output JSON **must contain** `"exit_code"` field
 7. **Never** print debug output to stdout — use stderr: `sys.stderr.write("debug\n")`
 8. **Never** access paths outside `/work/` — always use `safe_path()` for user-provided paths
+
+---
+
+## MANIFEST FORMAT
+
+```json
+{
+  "name": "python_exec",
+  "runtime": "firecracker",
+  "entrypoint": "main.py",
+  "timeout": 60,
+  "memory": "256mb",
+  "cpu": "1000mhz",
+  "egress": "restricted",
+  "skills": ["coding", "scripting"],
+  "snapshot_template": "python-v1"
+}
+```
+
+Required fields: `name`, `runtime`, `entrypoint`, `timeout`, `memory`, `cpu`, `egress`, `skills`
 
 ---
 
@@ -34,41 +70,44 @@ Before doing anything, read all files in order:
 
 ```
 [ ] mkdir sandbox-tools/{tier}/{tool_name}/
-[ ] Write manifest.json  (all required fields, name == dir name)
-[ ] Write entrypoint     (test locally first)
-[ ] Test:  TOOL_INPUT='{"key":"val"}' python3 main.py
+[ ] Write manifest.json (all required fields, name == dir name)
+[ ] Write entrypoint (test locally first)
+[ ] Test: TOOL_INPUT='{"key":"val"}' python3 main.py
 [ ] Check: stdout is valid JSON with exit_code
-[ ] Register in sandbox-platform: internal/tool/registry/registry.go
-[ ] Add routing: sandbox-platform: internal/router/rules.go
+[ ] Update: memory-bank/tool-registry.md
 [ ] Update: memory-bank/progress.md
 ```
 
 ---
 
-## PYTHON TOOLS
+## RUNTIME TIERS
 
-- Always parse TOOL_INPUT at the top — if it fails, print error JSON and return
-- Always use the `out()` helper — never call `print()` directly
-- Always use `safe_path()` for any user-supplied file path
-- Use `subprocess.run(..., capture_output=True, text=True)` — never `os.system()`
-- Playwright: always pass `--no-sandbox --disable-dev-shm-usage`, always close browser in `finally`
+### WASM Tools (`wasm/`)
+- Written in Rust (or Python via Pyodide)
+- Build: `cargo build --target wasm32-wasi --release`
+- Output: `dist/tool_name.wasm` → upload ke MinIO
+- Input: `os.Args[1]` or stdin
+- No CGO, no external C libraries
 
----
+### Firecracker Tools (`firecracker/`)
+- Written in Python (or Node.js, Bash)
+- Execute inside microVM from snapshot
+- Dependencies in `requirements.txt` (pre-installed in snapshot)
+- Input: stdin JSON
+- Output: stdout JSON
 
-## WASM TOOLS (Go)
-
-- Build tag: `//go:build wasip1` — NOT `js && wasm`
-- Compile: `GOOS=wasip1 GOARCH=wasm go build -o {name}.wasm .`
-- Input: `os.Args[1]` (not env var)
-- No CGO, no external libraries that require CGO
-- Output: `fmt.Println(string(jsonBytes))` — single line
+### GUI Tools (`gui/`)
+- Written in JavaScript (Playwright)
+- Execute with Chromium session managed by gui-host-agent
+- Input: `INPUT_JSON` env var
+- Output: stdout JSON + artifacts to MinIO
 
 ---
 
 ## FORBIDDEN IN ALL TOOLS
 
 | What | Why |
-|------|-----|
+|---|---|
 | `print("debug")` to stdout | Breaks JSON parsing |
 | `os.path.join("/", user_path)` without `safe_path()` | Path traversal risk |
 | `sys.exit()` before printing output | Agent gets empty result |
@@ -80,7 +119,11 @@ Before doing anything, read all files in order:
 ## UPDATE MEMORY BANK
 
 After any significant change:
-- Added/modified a tool → update `progress.md`
-- New pattern discovered → update `systemPatterns.md`
-- New bug found → update `activeContext.md`
-- Completed a known issue → update `activeContext.md` + `progress.md`
+
+| What Changed | Update These Files |
+|---|---|
+| Tool added/modified | `tool-registry.md`, `progress.md` |
+| New pattern discovered | `systemPatterns.md` |
+| New bug found | `activeContext.md` |
+| Completed an issue | `activeContext.md`, `progress.md` |
+| Any session work | `development-log.md` (append entry) |

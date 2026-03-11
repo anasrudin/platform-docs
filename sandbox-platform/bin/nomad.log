@@ -1,0 +1,532 @@
+==> Loaded configuration from bin/nomad-dev.hcl
+==> Starting Nomad agent...
+==> Nomad agent configuration:
+
+       Advertise Addrs: HTTP: 127.0.0.1:4646; RPC: 127.0.0.1:4647; Serf: 127.0.0.1:4648
+            Bind Addrs: HTTP: [127.0.0.1:4646]; RPC: 127.0.0.1:4647; Serf: 127.0.0.1:4648
+                Client: true
+             Log Level: DEBUG
+               Node Id: 986e758f-4c31-5c1d-0694-84af7d4a538b
+                Region: global (DC: dc1)
+                Server: true
+               Version: 1.11.3
+
+==> Nomad agent started! Log data will stream in below:
+
+    2026-03-11T20:58:47.178+0900 [DEBUG] nomad: issuer not set; OIDC Discovery endpoint for workload identities disabled
+    2026-03-11T20:58:47.183+0900 [INFO]  nomad.raft: initial configuration: index=1 servers="[{Suffrage:Voter ID:39e1b764-0fdb-f159-1274-77f3e025285a Address:127.0.0.1:4647}]"
+    2026-03-11T20:58:47.184+0900 [INFO]  nomad.raft: entering follower state: follower="Node at 127.0.0.1:4647 [Follower]" leader-address= leader-id=
+    2026-03-11T20:58:47.185+0900 [INFO]  nomad: serf: EventMemberJoin: singularity.local.global 127.0.0.1
+    2026-03-11T20:58:47.185+0900 [INFO]  nomad: starting scheduling worker(s): num_workers=8 schedulers=["service", "batch", "system", "sysbatch", "_core"]
+    2026-03-11T20:58:47.186+0900 [DEBUG] nomad: started scheduling worker: id=0ba5dd07-5816-12c2-f715-b69db7f5a8c3 index=1 of=8
+    2026-03-11T20:58:47.186+0900 [DEBUG] nomad: started scheduling worker: id=41978563-121a-2f48-7887-cc57a4355a9d index=2 of=8
+    2026-03-11T20:58:47.186+0900 [DEBUG] nomad: started scheduling worker: id=ab2ff2e4-3a0a-2950-da23-fa121ec1b66b index=3 of=8
+    2026-03-11T20:58:47.186+0900 [DEBUG] nomad: started scheduling worker: id=dd354e98-2967-1cfd-a4db-3df311e5e125 index=4 of=8
+    2026-03-11T20:58:47.186+0900 [DEBUG] worker: running: worker_id=41978563-121a-2f48-7887-cc57a4355a9d
+    2026-03-11T20:58:47.186+0900 [DEBUG] worker: running: worker_id=0ba5dd07-5816-12c2-f715-b69db7f5a8c3
+    2026-03-11T20:58:47.186+0900 [DEBUG] nomad: started scheduling worker: id=7c4e1e2e-be9c-e9da-573d-6f680a6295a1 index=5 of=8
+    2026-03-11T20:58:47.186+0900 [DEBUG] nomad: started scheduling worker: id=67754ef9-9686-2067-8e7a-12a8e9889963 index=6 of=8
+    2026-03-11T20:58:47.186+0900 [DEBUG] nomad: started scheduling worker: id=724a7f53-7712-670c-1366-13c24b64c3e0 index=7 of=8
+    2026-03-11T20:58:47.186+0900 [DEBUG] worker: running: worker_id=dd354e98-2967-1cfd-a4db-3df311e5e125
+    2026-03-11T20:58:47.186+0900 [DEBUG] worker: running: worker_id=7c4e1e2e-be9c-e9da-573d-6f680a6295a1
+    2026-03-11T20:58:47.186+0900 [DEBUG] worker: running: worker_id=67754ef9-9686-2067-8e7a-12a8e9889963
+    2026-03-11T20:58:47.186+0900 [DEBUG] worker: running: worker_id=724a7f53-7712-670c-1366-13c24b64c3e0
+    2026-03-11T20:58:47.186+0900 [DEBUG] nomad: started scheduling worker: id=1679aea4-1711-2212-ccc6-246eff2304ac index=8 of=8
+    2026-03-11T20:58:47.186+0900 [INFO]  nomad: started scheduling worker(s): num_workers=8 schedulers=["service", "batch", "system", "sysbatch", "_core"]
+    2026-03-11T20:58:47.186+0900 [DEBUG] worker: running: worker_id=ab2ff2e4-3a0a-2950-da23-fa121ec1b66b
+    2026-03-11T20:58:47.187+0900 [WARN]  agent.plugin_loader: skipping external plugins since plugin_dir doesn't exist: plugin_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/plugins
+    2026-03-11T20:58:47.186+0900 [DEBUG] worker: running: worker_id=1679aea4-1711-2212-ccc6-246eff2304ac
+    2026-03-11T20:58:47.188+0900 [INFO]  nomad: adding server: name=singularity.local.global addr=127.0.0.1:4647 dc=dc1
+    2026-03-11T20:58:47.188+0900 [DEBUG] nomad.keyring.replicator: starting encryption key replication
+    2026-03-11T20:58:47.189+0900 [DEBUG] agent.plugin_loader.exec.id_validator: user range configured: plugin_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/plugins denied range=""
+    2026-03-11T20:58:47.189+0900 [DEBUG] agent.plugin_loader.exec.id_validator: group range configured: plugin_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/plugins denied range=""
+    2026-03-11T20:58:47.190+0900 [DEBUG] agent.plugin_loader.docker: using client connection initialized from environment: plugin_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/plugins
+    2026-03-11T20:58:47.190+0900 [DEBUG] agent.plugin_loader.raw_exec.id_validator: user range configured: plugin_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/plugins denied range=""
+    2026-03-11T20:58:47.190+0900 [DEBUG] agent.plugin_loader.raw_exec.id_validator: group range configured: plugin_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/plugins denied range=""
+    2026-03-11T20:58:47.190+0900 [INFO]  agent: detected plugin: name=qemu type=driver plugin_version=0.1.0
+    2026-03-11T20:58:47.190+0900 [INFO]  agent: detected plugin: name=java type=driver plugin_version=0.1.0
+    2026-03-11T20:58:47.190+0900 [INFO]  agent: detected plugin: name=docker type=driver plugin_version=0.1.0
+    2026-03-11T20:58:47.190+0900 [INFO]  agent: detected plugin: name=raw_exec type=driver plugin_version=0.1.0
+    2026-03-11T20:58:47.190+0900 [INFO]  agent: detected plugin: name=exec type=driver plugin_version=0.1.0
+    2026-03-11T20:58:47.191+0900 [INFO]  client: using state directory: state_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/client
+    2026-03-11T20:58:47.191+0900 [INFO]  client: using alloc directory: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc
+    2026-03-11T20:58:47.191+0900 [INFO]  client: using dynamic ports: min=20000 max=32000 reserved=""
+    2026-03-11T20:58:47.222+0900 [DEBUG] client.fingerprint_mgr: built-in fingerprints: fingerprinters=["arch", "cni", "consul", "cpu", "host", "host_volume_plugins", "landlock", "memory", "network", "nomad", "plugins_cni", "secrets_plugins", "signal", "storage", "vault", "env_aws", "env_gce", "env_azure", "env_digitalocean"]
+    2026-03-11T20:58:47.222+0900 [DEBUG] client.fingerprint_mgr: CNI config dir is not set or does not exist, skipping: cni_config_dir=/opt/cni/config
+    2026-03-11T20:58:47.228+0900 [WARN]  client.fingerprint_mgr.consul: failed to acquire consul self endpoint: cluster=default error="Get \"http://localhost:8500/v1/agent/self\": dial tcp [::1]:8500: connect: connection refused"
+    2026-03-11T20:58:47.228+0900 [DEBUG] client.fingerprint_mgr.cpu: detected CPU model: name="Apple M1 Pro"
+    2026-03-11T20:58:47.228+0900 [DEBUG] client.fingerprint_mgr.cpu: detected CPU efficiency core speed: mhz=2064
+    2026-03-11T20:58:47.228+0900 [DEBUG] client.fingerprint_mgr.cpu: detected CPU performance core speed: mhz=3228
+    2026-03-11T20:58:47.228+0900 [DEBUG] client.fingerprint_mgr.cpu: detected CPU efficiency core count: cores=2
+    2026-03-11T20:58:47.228+0900 [DEBUG] client.fingerprint_mgr.cpu: detected CPU performance core count: cores=6
+    2026-03-11T20:58:47.228+0900 [DEBUG] client.fingerprint_mgr.cpu: detected CPU core count: cores=8
+    2026-03-11T20:58:47.228+0900 [DEBUG] client.fingerprint_mgr: fingerprinting periodically: fingerprinter=consul initial_period=15s
+    2026-03-11T20:58:47.254+0900 [DEBUG] client.fingerprint_mgr.host_volume_plugins: detected plugin built-in: plugin_id=mkdir version=0.0.1
+    2026-03-11T20:58:47.254+0900 [DEBUG] client.fingerprint_mgr.host_volume_plugins: plugin dir does not exist: dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/host_volume_plugins
+    2026-03-11T20:58:47.254+0900 [WARN]  client.fingerprint_mgr.landlock: failed to fingerprint kernel landlock feature: error="landlock not supported on this platform"
+    2026-03-11T20:58:47.254+0900 [DEBUG] client.fingerprint_mgr.network: link speed could not be detected and no speed specified by user, falling back to default speed: interface=lo0 mbits=1000
+    2026-03-11T20:58:47.254+0900 [DEBUG] client.fingerprint_mgr.network: detected interface IP: interface=lo0 IP=127.0.0.1
+    2026-03-11T20:58:47.254+0900 [DEBUG] client.fingerprint_mgr.network: detected interface IP: interface=lo0 IP=::1
+    2026-03-11T20:58:47.254+0900 [DEBUG] client.fingerprint_mgr.network: link speed could not be detected, falling back to default speed: interface=lo0 mbits=1000
+    2026-03-11T20:58:47.254+0900 [DEBUG] client.fingerprint_mgr.network: link speed could not be detected, falling back to default speed: interface=gif0 mbits=1000
+    2026-03-11T20:58:47.254+0900 [DEBUG] client.fingerprint_mgr.network: link speed could not be detected, falling back to default speed: interface=stf0 mbits=1000
+    2026-03-11T20:58:47.254+0900 [DEBUG] client.fingerprint_mgr.network: link speed could not be detected, falling back to default speed: interface=anpi2 mbits=1000
+    2026-03-11T20:58:47.254+0900 [DEBUG] client.fingerprint_mgr.network: link speed could not be detected, falling back to default speed: interface=anpi1 mbits=1000
+    2026-03-11T20:58:47.254+0900 [DEBUG] client.fingerprint_mgr.network: link speed could not be detected, falling back to default speed: interface=anpi0 mbits=1000
+    2026-03-11T20:58:47.254+0900 [DEBUG] client.fingerprint_mgr.network: link speed could not be detected, falling back to default speed: interface=en4 mbits=1000
+    2026-03-11T20:58:47.254+0900 [DEBUG] client.fingerprint_mgr.network: link speed could not be detected, falling back to default speed: interface=en5 mbits=1000
+    2026-03-11T20:58:47.254+0900 [DEBUG] client.fingerprint_mgr.network: link speed could not be detected, falling back to default speed: interface=en6 mbits=1000
+    2026-03-11T20:58:47.254+0900 [DEBUG] client.fingerprint_mgr.network: link speed could not be detected, falling back to default speed: interface=en1 mbits=1000
+    2026-03-11T20:58:47.254+0900 [DEBUG] client.fingerprint_mgr.network: link speed could not be detected, falling back to default speed: interface=en2 mbits=1000
+    2026-03-11T20:58:47.254+0900 [DEBUG] client.fingerprint_mgr.network: link speed could not be detected, falling back to default speed: interface=en3 mbits=1000
+    2026-03-11T20:58:47.254+0900 [DEBUG] client.fingerprint_mgr.network: link speed could not be detected, falling back to default speed: interface=bridge0 mbits=1000
+    2026-03-11T20:58:47.254+0900 [DEBUG] client.fingerprint_mgr.network: link speed could not be detected, falling back to default speed: interface=ap1 mbits=1000
+    2026-03-11T20:58:47.254+0900 [DEBUG] client.fingerprint_mgr.network: link speed could not be detected, falling back to default speed: interface=en0 mbits=1000
+    2026-03-11T20:58:47.254+0900 [DEBUG] client.fingerprint_mgr.network: link speed could not be detected, falling back to default speed: interface=awdl0 mbits=1000
+    2026-03-11T20:58:47.254+0900 [DEBUG] client.fingerprint_mgr.network: link speed could not be detected, falling back to default speed: interface=llw0 mbits=1000
+    2026-03-11T20:58:47.254+0900 [DEBUG] client.fingerprint_mgr.network: link speed could not be detected, falling back to default speed: interface=utun0 mbits=1000
+    2026-03-11T20:58:47.254+0900 [DEBUG] client.fingerprint_mgr.network: link speed could not be detected, falling back to default speed: interface=utun1 mbits=1000
+    2026-03-11T20:58:47.254+0900 [DEBUG] client.fingerprint_mgr.network: link speed could not be detected, falling back to default speed: interface=utun2 mbits=1000
+    2026-03-11T20:58:47.254+0900 [DEBUG] client.fingerprint_mgr.network: link speed could not be detected, falling back to default speed: interface=utun3 mbits=1000
+    2026-03-11T20:58:47.254+0900 [DEBUG] client.fingerprint_mgr.network: link speed could not be detected, falling back to default speed: interface=vmenet0 mbits=1000
+    2026-03-11T20:58:47.254+0900 [DEBUG] client.fingerprint_mgr.network: link speed could not be detected, falling back to default speed: interface=bridge100 mbits=1000
+    2026-03-11T20:58:47.258+0900 [DEBUG] client.fingerprint_mgr: fingerprinting periodically: fingerprinter=vault initial_period=15s
+    2026-03-11T20:58:47.258+0900 [DEBUG] client.fingerprint_mgr.env_azure: could not read value for attribute: attribute=compute/azEnvironment error="Get \"http://169.254.169.254/metadata/instance/compute/azEnvironment?api-version=2019-06-04&format=text\": dial tcp 169.254.169.254:80: connect: no route to host"
+    2026-03-11T20:58:47.258+0900 [DEBUG] client.fingerprint_mgr.env_azure: error performing initial probe, skipping
+    2026-03-11T20:58:47.258+0900 [DEBUG] client.fingerprint_mgr.env_digitalocean: failed to request metadata: attribute=region error="Get \"http://169.254.169.254/metadata/v1/region\": dial tcp 169.254.169.254:80: connect: no route to host"
+    2026-03-11T20:58:47.258+0900 [DEBUG] client.fingerprint_mgr.env_digitalocean: error performing initial probe, skipping
+    2026-03-11T20:58:47.259+0900 [DEBUG] client.fingerprint_mgr.env_aws: error performing initial probe, skipping
+    2026-03-11T20:58:47.260+0900 [DEBUG] client.fingerprint_mgr.env_gce: could not read value for attribute: attribute=machine-type error="Get \"http://169.254.169.254/computeMetadata/v1/instance/machine-type\": dial tcp 169.254.169.254:80: connect: no route to host"
+    2026-03-11T20:58:47.260+0900 [DEBUG] client.fingerprint_mgr.env_gce: error performing initial probe, skipping
+    2026-03-11T20:58:47.260+0900 [DEBUG] client.fingerprint_mgr: detected fingerprints: node_attrs=["arch", "consul", "cpu", "host", "host_volume_plugins", "network", "nomad", "secrets_plugins", "signal", "storage"]
+    2026-03-11T20:58:47.260+0900 [INFO]  client.plugin: starting plugin manager: plugin-type=csi
+    2026-03-11T20:58:47.260+0900 [INFO]  client.plugin: starting plugin manager: plugin-type=driver
+    2026-03-11T20:58:47.260+0900 [INFO]  client.plugin: starting plugin manager: plugin-type=device
+    2026-03-11T20:58:47.260+0900 [DEBUG] client.device_mgr: exiting since there are no device plugins
+    2026-03-11T20:58:47.260+0900 [INFO]  client.plugin: starting plugin manager: plugin-type=dynamic_host_volume
+    2026-03-11T20:58:47.261+0900 [DEBUG] client.plugin: waiting on plugin manager initial fingerprint: plugin-type=driver
+    2026-03-11T20:58:47.261+0900 [DEBUG] client.plugin: waiting on plugin manager initial fingerprint: plugin-type=device
+    2026-03-11T20:58:47.261+0900 [DEBUG] client.driver_mgr.raw_exec.id_validator: user range configured: driver=raw_exec denied range=""
+    2026-03-11T20:58:47.261+0900 [DEBUG] client.driver_mgr.raw_exec.id_validator: group range configured: driver=raw_exec denied range=""
+    2026-03-11T20:58:47.261+0900 [DEBUG] client.driver_mgr.exec.id_validator: user range configured: driver=exec denied range=""
+    2026-03-11T20:58:47.261+0900 [DEBUG] client.driver_mgr.exec.id_validator: group range configured: driver=exec denied range=""
+    2026-03-11T20:58:47.262+0900 [DEBUG] client.plugin: finished plugin manager initial fingerprint: plugin-type=device
+    2026-03-11T20:58:47.262+0900 [DEBUG] client.plugin: waiting on plugin manager initial fingerprint: plugin-type=dynamic_host_volume
+    2026-03-11T20:58:47.262+0900 [DEBUG] client.plugin: finished plugin manager initial fingerprint: plugin-type=dynamic_host_volume
+    2026-03-11T20:58:47.262+0900 [DEBUG] client.driver_mgr.docker: using client connection initialized from environment: driver=docker
+    2026-03-11T20:58:47.262+0900 [DEBUG] client.driver_mgr: initial driver fingerprint: driver=exec health=undetected description="exec driver unsupported on client OS"
+    2026-03-11T20:58:47.262+0900 [DEBUG] client.driver_mgr: initial driver fingerprint: driver=raw_exec health=healthy description=Healthy
+    2026-03-11T20:58:47.263+0900 [DEBUG] client.server_mgr: new server list: new_servers=[127.0.0.1:4647] old_servers=[]
+    2026-03-11T20:58:47.266+0900 [DEBUG] client.driver_mgr: initial driver fingerprint: driver=qemu health=undetected description=""
+    2026-03-11T20:58:47.281+0900 [DEBUG] client.driver_mgr: initial driver fingerprint: driver=docker health=healthy description=Healthy
+    2026-03-11T20:58:47.474+0900 [DEBUG] client.driver_mgr: initial driver fingerprint: driver=java health=healthy description=Healthy
+    2026-03-11T20:58:47.474+0900 [DEBUG] client.driver_mgr: detected drivers: drivers="map[healthy:[raw_exec docker java] undetected:[exec qemu]]"
+    2026-03-11T20:58:47.475+0900 [DEBUG] client.plugin: finished plugin manager initial fingerprint: plugin-type=driver
+    2026-03-11T20:58:47.475+0900 [INFO]  client: started client: node_id=5e0aca14-a95d-8e9a-1e43-d952b2705bdf
+    2026-03-11T20:58:47.476+0900 [DEBUG] http: UI is enabled
+    2026-03-11T20:58:47.477+0900 [DEBUG] http: UI is enabled
+    2026-03-11T20:58:49.171+0900 [WARN]  nomad.raft: heartbeat timeout reached, starting election: last-leader-addr= last-leader-id=
+    2026-03-11T20:58:49.171+0900 [INFO]  nomad.raft: entering candidate state: node="Node at 127.0.0.1:4647 [Candidate]" term=2
+    2026-03-11T20:58:49.172+0900 [DEBUG] nomad.raft: pre-voting for self: term=2 id=39e1b764-0fdb-f159-1274-77f3e025285a
+    2026-03-11T20:58:49.172+0900 [DEBUG] nomad.raft: calculated votes needed: needed=1 term=2
+    2026-03-11T20:58:49.172+0900 [DEBUG] nomad.raft: pre-vote received: from=39e1b764-0fdb-f159-1274-77f3e025285a term=2 tally=0
+    2026-03-11T20:58:49.172+0900 [DEBUG] nomad.raft: pre-vote granted: from=39e1b764-0fdb-f159-1274-77f3e025285a term=2 tally=1
+    2026-03-11T20:58:49.172+0900 [INFO]  nomad.raft: pre-vote successful, starting election: term=2 tally=1 refused=0 votesNeeded=1
+    2026-03-11T20:58:49.172+0900 [DEBUG] nomad.raft: voting for self: term=2 id=39e1b764-0fdb-f159-1274-77f3e025285a
+    2026-03-11T20:58:49.172+0900 [DEBUG] nomad.raft: vote granted: from=39e1b764-0fdb-f159-1274-77f3e025285a term=2 tally=1
+    2026-03-11T20:58:49.172+0900 [INFO]  nomad.raft: election won: term=2 tally=1
+    2026-03-11T20:58:49.172+0900 [INFO]  nomad.raft: entering leader state: leader="Node at 127.0.0.1:4647 [Leader]"
+    2026-03-11T20:58:49.172+0900 [INFO]  nomad: cluster leadership acquired
+    2026-03-11T20:58:49.177+0900 [DEBUG] nomad.autopilot: autopilot is now running
+    2026-03-11T20:58:49.177+0900 [DEBUG] nomad.autopilot: state update routine is now running
+    2026-03-11T20:58:49.179+0900 [INFO]  nomad.core: established cluster id: cluster_id=d35ee82f-330c-023e-b1f1-e2a558e16391 create_time=1773230329178699000
+    2026-03-11T20:58:49.179+0900 [INFO]  nomad: eval broker status modified: paused=false
+    2026-03-11T20:58:49.179+0900 [INFO]  nomad: blocked evals status modified: paused=false
+    2026-03-11T20:58:49.202+0900 [WARN]  nomad.client: node registration without introduction token: enforcement_level=warn node_id=5e0aca14-a95d-8e9a-1e43-d952b2705bdf node_pool=default node_name=singularity.local
+    2026-03-11T20:58:49.202+0900 [ERROR] client.rpc: error performing RPC to server: error="rpc error: failed to sign node identity claims: keyring has not been initialized yet" rpc=Node.Register server=127.0.0.1:4647
+    2026-03-11T20:58:49.202+0900 [ERROR] client.rpc: error performing RPC to server which is not safe to automatically retry: error="rpc error: failed to sign node identity claims: keyring has not been initialized yet" rpc=Node.Register server=127.0.0.1:4647
+    2026-03-11T20:58:49.203+0900 [ERROR] client: error registering: error="rpc error: failed to sign node identity claims: keyring has not been initialized yet"
+    2026-03-11T20:58:49.246+0900 [INFO]  nomad.keyring: initialized keyring: id=ce3f46e3-f474-d381-5c32-ed6a96d35ef1
+    2026-03-11T20:58:50.129+0900 [DEBUG] worker: dequeued evaluation: worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 eval_id=c2d530a8-27d7-132b-a8e0-434beeb2d78d type=service namespace=default job_id=sandbox-agents node_id="" triggered_by=job-register
+    2026-03-11T20:58:50.129+0900 [DEBUG] http: request complete: method=PUT path=/v1/jobs duration=4.41525ms
+    2026-03-11T20:58:50.130+0900 [DEBUG] worker.service_sched: reconciled current state with desired state: eval_id=c2d530a8-27d7-132b-a8e0-434beeb2d78d job_id=sandbox-agents namespace=default worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 total_place=1 total_destructive=0 total_inplace=0 total_stop=0 total_disconnect=0 total_reconnect=0 deployment_created=97239b90-75ee-e481-c706-c8f5ce543c29 firecracker-group_ignore=0 firecracker-group_place=1 firecracker-group_destructive=0 firecracker-group_inplace=0 firecracker-group_stop=0 firecracker-group_migrate=0 firecracker-group_canary=0 firecracker-group_preempt=0 firecracker-group_reschedule_now=0 firecracker-group_reschedule_later=0 firecracker-group_disconnect=0 firecracker-group_reconnect=0
+    2026-03-11T20:58:50.131+0900 [DEBUG] worker: created evaluation: worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 eval="<Eval \"33debca6-0677-b329-00fa-afc995571106\" JobID: \"sandbox-agents\" Namespace: \"default\">" waitUntil="\"0001-01-01 00:00:00 +0000 UTC\""
+    2026-03-11T20:58:50.131+0900 [DEBUG] worker.service_sched: failed to place all allocations, blocked eval created: eval_id=c2d530a8-27d7-132b-a8e0-434beeb2d78d job_id=sandbox-agents namespace=default worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 blocked_eval_id=33debca6-0677-b329-00fa-afc995571106
+    2026-03-11T20:58:50.132+0900 [DEBUG] worker: submitted plan for evaluation: worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 eval_id=c2d530a8-27d7-132b-a8e0-434beeb2d78d
+    2026-03-11T20:58:50.132+0900 [DEBUG] worker.service_sched: setting eval status: eval_id=c2d530a8-27d7-132b-a8e0-434beeb2d78d job_id=sandbox-agents namespace=default worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 status=complete
+    2026-03-11T20:58:50.132+0900 [DEBUG] worker: updated evaluation: worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 eval="<Eval \"c2d530a8-27d7-132b-a8e0-434beeb2d78d\" JobID: \"sandbox-agents\" Namespace: \"default\">"
+    2026-03-11T20:58:50.133+0900 [DEBUG] worker: ack evaluation: worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 eval_id=c2d530a8-27d7-132b-a8e0-434beeb2d78d type=service namespace=default job_id=sandbox-agents node_id="" triggered_by=job-register
+    2026-03-11T20:58:50.202+0900 [DEBUG] http: request complete: method=GET path=/v1/agent/self duration="710.375µs"
+    2026-03-11T20:58:50.203+0900 [DEBUG] http: request complete: method=GET path=/v1/evaluation/c2d530a8-27d7-132b-a8e0-434beeb2d78d?related=true duration="388.167µs"
+    2026-03-11T20:58:50.204+0900 [WARN]  nomad.client: node registration without introduction token: enforcement_level=warn node_id=5e0aca14-a95d-8e9a-1e43-d952b2705bdf node_pool=default node_name=singularity.local
+    2026-03-11T20:58:50.204+0900 [DEBUG] http: request complete: method=GET path=/v1/evaluation/c2d530a8-27d7-132b-a8e0-434beeb2d78d/allocations duration="80.583µs"
+    2026-03-11T20:58:50.206+0900 [DEBUG] http: request complete: method=GET path=/v1/deployment/97239b90-75ee-e481-c706-c8f5ce543c29?stale= duration="327.375µs"
+    2026-03-11T20:58:50.206+0900 [INFO]  client: setting node identity token
+    2026-03-11T20:58:50.206+0900 [INFO]  client: node registration complete
+    2026-03-11T20:58:50.207+0900 [DEBUG] client: updated allocations: index=10 total=0 pulled=0 filtered=0
+    2026-03-11T20:58:50.207+0900 [DEBUG] client: state updated: node_status=ready
+    2026-03-11T20:58:50.207+0900 [DEBUG] worker: dequeued evaluation: worker_id=1679aea4-1711-2212-ccc6-246eff2304ac eval_id=33debca6-0677-b329-00fa-afc995571106 type=service namespace=default job_id=sandbox-agents node_id="" triggered_by=queued-allocs
+    2026-03-11T20:58:50.207+0900 [DEBUG] client: allocation updates: added=0 removed=0 updated=0 ignored=0
+    2026-03-11T20:58:50.207+0900 [DEBUG] client: allocation updates applied: added=0 removed=0 updated=0 ignored=0 errors=0
+    2026-03-11T20:58:50.207+0900 [DEBUG] worker.service_sched: reconciled current state with desired state: eval_id=33debca6-0677-b329-00fa-afc995571106 job_id=sandbox-agents namespace=default worker_id=1679aea4-1711-2212-ccc6-246eff2304ac total_place=1 total_destructive=0 total_inplace=0 total_stop=0 total_disconnect=0 total_reconnect=0 firecracker-group_ignore=0 firecracker-group_place=1 firecracker-group_destructive=0 firecracker-group_inplace=0 firecracker-group_stop=0 firecracker-group_migrate=0 firecracker-group_canary=0 firecracker-group_preempt=0 firecracker-group_reschedule_now=0 firecracker-group_reschedule_later=0 firecracker-group_disconnect=0 firecracker-group_reconnect=0
+    2026-03-11T20:58:50.210+0900 [DEBUG] worker: submitted plan for evaluation: worker_id=1679aea4-1711-2212-ccc6-246eff2304ac eval_id=33debca6-0677-b329-00fa-afc995571106
+    2026-03-11T20:58:50.210+0900 [DEBUG] worker.service_sched: setting eval status: eval_id=33debca6-0677-b329-00fa-afc995571106 job_id=sandbox-agents namespace=default worker_id=1679aea4-1711-2212-ccc6-246eff2304ac status=complete
+    2026-03-11T20:58:50.210+0900 [DEBUG] http: request complete: method=GET path="/v1/deployment/97239b90-75ee-e481-c706-c8f5ce543c29?index=10&stale=" duration=3.47875ms
+    2026-03-11T20:58:50.210+0900 [DEBUG] worker: updated evaluation: worker_id=1679aea4-1711-2212-ccc6-246eff2304ac eval="<Eval \"33debca6-0677-b329-00fa-afc995571106\" JobID: \"sandbox-agents\" Namespace: \"default\">"
+    2026-03-11T20:58:50.210+0900 [DEBUG] worker: ack evaluation: worker_id=1679aea4-1711-2212-ccc6-246eff2304ac eval_id=33debca6-0677-b329-00fa-afc995571106 type=service namespace=default job_id=sandbox-agents node_id="" triggered_by=queued-allocs
+    2026-03-11T20:58:50.210+0900 [DEBUG] client: updated allocations: index=14 total=1 pulled=1 filtered=0
+    2026-03-11T20:58:50.210+0900 [DEBUG] client: allocation updates: added=1 removed=0 updated=0 ignored=0
+    2026-03-11T20:58:50.213+0900 [INFO]  client.alloc_runner.task_runner: Task event: alloc_id=d3815bea-cce1-439a-beea-52ca6f60f008 task=fc-agent type=Received msg="Task received by client" failed=false
+    2026-03-11T20:58:50.213+0900 [DEBUG] client: allocation updates applied: added=1 removed=0 updated=0 ignored=0 errors=0
+    2026-03-11T20:58:50.213+0900 [DEBUG] client.alloc_runner.widmgr: retrieving and renewing workload identities: alloc_id=d3815bea-cce1-439a-beea-52ca6f60f008 num_identities=0
+    2026-03-11T20:58:50.215+0900 [DEBUG] client.alloc_runner.task_runner: lifecycle start condition has been met, proceeding: alloc_id=d3815bea-cce1-439a-beea-52ca6f60f008 task=fc-agent
+    2026-03-11T20:58:50.215+0900 [INFO]  client.alloc_runner.task_runner: Task event: alloc_id=d3815bea-cce1-439a-beea-52ca6f60f008 task=fc-agent type="Task Setup" msg="Building Task Directory" failed=false
+    2026-03-11T20:58:50.216+0900 [DEBUG] client.alloc_runner.task_runner.task_hook.logmon: starting plugin: alloc_id=d3815bea-cce1-439a-beea-52ca6f60f008 task=fc-agent path=/opt/homebrew/bin/nomad args=["/opt/homebrew/bin/nomad", "logmon"]
+    2026-03-11T20:58:50.217+0900 [DEBUG] client.alloc_runner.task_runner.task_hook.logmon: plugin started: alloc_id=d3815bea-cce1-439a-beea-52ca6f60f008 task=fc-agent path=/opt/homebrew/bin/nomad pid=48454
+    2026-03-11T20:58:50.217+0900 [DEBUG] client.alloc_runner.task_runner.task_hook.logmon: waiting for RPC address: alloc_id=d3815bea-cce1-439a-beea-52ca6f60f008 task=fc-agent plugin=/opt/homebrew/bin/nomad
+    2026-03-11T20:58:50.245+0900 [DEBUG] client.alloc_runner.task_runner.task_hook.logmon: using plugin: alloc_id=d3815bea-cce1-439a-beea-52ca6f60f008 task=fc-agent version=2
+    2026-03-11T20:58:50.245+0900 [DEBUG] client.alloc_runner.task_runner.task_hook.logmon.nomad: plugin address: alloc_id=d3815bea-cce1-439a-beea-52ca6f60f008 task=fc-agent @module=logmon address=/var/folders/36/11hkvbcx16sfwm_8x1f07h7w0000gn/T/plugin2945923079 network=unix timestamp="2026-03-11T20:58:50.245+0900"
+    2026-03-11T20:58:50.248+0900 [DEBUG] client.alloc_runner.task_runner.task_hook.logmon.nomad: opening fifo: alloc_id=d3815bea-cce1-439a-beea-52ca6f60f008 task=fc-agent @module=logmon path=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc/d3815bea-cce1-439a-beea-52ca6f60f008/alloc/logs/.fc-agent.stdout.fifo timestamp="2026-03-11T20:58:50.248+0900"
+    2026-03-11T20:58:50.248+0900 [DEBUG] client.alloc_runner.task_runner.task_hook.logmon.nomad: opening fifo: alloc_id=d3815bea-cce1-439a-beea-52ca6f60f008 task=fc-agent path=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc/d3815bea-cce1-439a-beea-52ca6f60f008/alloc/logs/.fc-agent.stderr.fifo @module=logmon timestamp="2026-03-11T20:58:50.248+0900"
+    2026-03-11T20:58:50.248+0900 [WARN]  client.alloc_runner.task_runner.task_hook.api: error creating task api socket: alloc_id=d3815bea-cce1-439a-beea-52ca6f60f008 task=fc-agent path=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc/d3815bea-cce1-439a-beea-52ca6f60f008/fc-agent/secrets/api.sock error="listen unix /Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc/d3815bea-cce1-439a-beea-52ca6f60f008/fc-agent/secrets/api.sock: bind: invalid argument"
+    2026-03-11T20:58:50.250+0900 [INFO]  client.driver_mgr.raw_exec: starting task: driver=raw_exec driver_cfg="{Command:/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/fc-agent Args:[] OverrideCgroupV2: OverrideCgroupV1:map[] OOMScoreAdj:0 WorkDir: DeniedEnvvars:[]}"
+    2026-03-11T20:58:50.251+0900 [DEBUG] client.driver_mgr.raw_exec.executor: starting plugin: alloc_id=d3815bea-cce1-439a-beea-52ca6f60f008 driver=raw_exec task_name=fc-agent path=/opt/homebrew/bin/nomad args=["/opt/homebrew/bin/nomad", "executor", "{\"LogFile\":\"/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc/d3815bea-cce1-439a-beea-52ca6f60f008/fc-agent/executor.out\",\"LogLevel\":\"debug\",\"FSIsolation\":false,\"Compute\":{\"tc\":23496,\"nc\":8}}"]
+    2026-03-11T20:58:50.252+0900 [DEBUG] client.driver_mgr.raw_exec.executor: plugin started: alloc_id=d3815bea-cce1-439a-beea-52ca6f60f008 driver=raw_exec task_name=fc-agent path=/opt/homebrew/bin/nomad pid=48455
+    2026-03-11T20:58:50.252+0900 [DEBUG] client.driver_mgr.raw_exec.executor: waiting for RPC address: alloc_id=d3815bea-cce1-439a-beea-52ca6f60f008 driver=raw_exec task_name=fc-agent plugin=/opt/homebrew/bin/nomad
+    2026-03-11T20:58:50.278+0900 [DEBUG] client.driver_mgr.raw_exec.executor: using plugin: alloc_id=d3815bea-cce1-439a-beea-52ca6f60f008 driver=raw_exec task_name=fc-agent version=2
+    2026-03-11T20:58:50.284+0900 [INFO]  client.alloc_runner.task_runner: Task event: alloc_id=d3815bea-cce1-439a-beea-52ca6f60f008 task=fc-agent type=Started msg="Task started by client" failed=false
+    2026-03-11T20:58:50.539+0900 [DEBUG] client: updated allocations: index=16 total=1 pulled=0 filtered=1
+    2026-03-11T20:58:50.539+0900 [DEBUG] client: allocation updates: added=0 removed=0 updated=0 ignored=1
+    2026-03-11T20:58:50.539+0900 [DEBUG] client: allocation updates applied: added=0 removed=0 updated=0 ignored=1 errors=0
+    2026-03-11T20:58:51.207+0900 [DEBUG] client: state changed, updating node and re-registering
+    2026-03-11T20:58:51.209+0900 [INFO]  client: node registration complete
+    2026-03-11T20:59:00.625+0900 [DEBUG] http: request complete: method=GET path="/v1/deployment/97239b90-75ee-e481-c706-c8f5ce543c29?index=14&stale=" duration=10.415271416s
+    2026-03-11T20:59:00.626+0900 [DEBUG] client: updated allocations: index=18 total=1 pulled=0 filtered=1
+    2026-03-11T20:59:00.626+0900 [DEBUG] client: allocation updates: added=0 removed=0 updated=0 ignored=1
+    2026-03-11T20:59:00.626+0900 [DEBUG] client: allocation updates applied: added=0 removed=0 updated=0 ignored=1 errors=0
+    2026-03-11T20:59:01.879+0900 [DEBUG] worker: dequeued evaluation: worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 eval_id=2ff97732-cd0b-d2d3-427d-51c0975c0571 type=service namespace=default job_id=sandbox-agents node_id="" triggered_by=deployment-watcher
+    2026-03-11T20:59:01.880+0900 [DEBUG] worker.service_sched: reconciled current state with desired state: eval_id=2ff97732-cd0b-d2d3-427d-51c0975c0571 job_id=sandbox-agents namespace=default worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 total_place=0 total_destructive=0 total_inplace=0 total_stop=0 total_disconnect=0 total_reconnect=0 deployment_updated=97239b90-75ee-e481-c706-c8f5ce543c29 deployment_update="successful (Deployment completed successfully)" firecracker-group_ignore=1 firecracker-group_place=0 firecracker-group_destructive=0 firecracker-group_inplace=0 firecracker-group_stop=0 firecracker-group_migrate=0 firecracker-group_canary=0 firecracker-group_preempt=0 firecracker-group_reschedule_now=0 firecracker-group_reschedule_later=0 firecracker-group_disconnect=0 firecracker-group_reconnect=0
+    2026-03-11T20:59:01.882+0900 [DEBUG] worker: submitted plan for evaluation: worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 eval_id=2ff97732-cd0b-d2d3-427d-51c0975c0571
+    2026-03-11T20:59:01.882+0900 [DEBUG] http: request complete: method=GET path="/v1/deployment/97239b90-75ee-e481-c706-c8f5ce543c29?index=18&stale=" duration=1.255299459s
+    2026-03-11T20:59:01.882+0900 [DEBUG] worker.service_sched: setting eval status: eval_id=2ff97732-cd0b-d2d3-427d-51c0975c0571 job_id=sandbox-agents namespace=default worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 status=complete
+    2026-03-11T20:59:01.883+0900 [DEBUG] worker: updated evaluation: worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 eval="<Eval \"2ff97732-cd0b-d2d3-427d-51c0975c0571\" JobID: \"sandbox-agents\" Namespace: \"default\">"
+    2026-03-11T20:59:01.883+0900 [DEBUG] worker: ack evaluation: worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 eval_id=2ff97732-cd0b-d2d3-427d-51c0975c0571 type=service namespace=default job_id=sandbox-agents node_id="" triggered_by=deployment-watcher
+    2026-03-11T20:59:04.058+0900 [DEBUG] http: request complete: method=GET path="/v1/jobs?per_page=20&prefix=sandbox-agents" duration="504.75µs"
+    2026-03-11T20:59:04.059+0900 [DEBUG] http: request complete: method=GET path=/v1/job/sandbox-agents?namespace=default duration="74.667µs"
+    2026-03-11T20:59:04.061+0900 [DEBUG] http: request complete: method=GET path="/v1/job/sandbox-agents/allocations?all=false&namespace=default" duration="637.167µs"
+    2026-03-11T20:59:04.063+0900 [DEBUG] http: request complete: method=GET path=/v1/job/sandbox-agents/evaluations?namespace=default duration="265.541µs"
+    2026-03-11T20:59:04.063+0900 [DEBUG] http: request complete: method=GET path=/v1/job/sandbox-agents/deployment?namespace=default duration="118.958µs"
+    2026-03-11T20:59:04.064+0900 [DEBUG] http: request complete: method=GET path=/v1/job/sandbox-agents/summary?namespace=default duration="55.083µs"
+    2026-03-11T20:59:04.139+0900 [DEBUG] http: request complete: method=GET path=/v1/agent/self duration="226.708µs"
+    2026-03-11T21:03:49.182+0900 [DEBUG] worker: dequeued evaluation: worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 eval_id=d3ce93af-7603-2777-ad98-4bfe4ea3eb0b type=_core namespace=- job_id=eval-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:03:49.184+0900 [DEBUG] worker: dequeued evaluation: worker_id=1679aea4-1711-2212-ccc6-246eff2304ac eval_id=74376322-9ca5-2afb-f42c-a88c57a5eb0c type=_core namespace=- job_id=deployment-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:03:49.185+0900 [DEBUG] worker: ack evaluation: worker_id=1679aea4-1711-2212-ccc6-246eff2304ac eval_id=74376322-9ca5-2afb-f42c-a88c57a5eb0c type=_core namespace=- job_id=deployment-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:03:49.185+0900 [DEBUG] worker: ack evaluation: worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 eval_id=d3ce93af-7603-2777-ad98-4bfe4ea3eb0b type=_core namespace=- job_id=eval-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:03:49.185+0900 [DEBUG] worker: dequeued evaluation: worker_id=1679aea4-1711-2212-ccc6-246eff2304ac eval_id=35e188d3-f85a-420b-9b81-2711f6eccb22 type=_core namespace=- job_id=node-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:03:49.186+0900 [DEBUG] worker: dequeued evaluation: worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 eval_id=65ed2922-3a99-e9e3-6c69-86b60d586d2c type=_core namespace=- job_id=csi-volume-claim-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:03:49.186+0900 [DEBUG] worker: ack evaluation: worker_id=1679aea4-1711-2212-ccc6-246eff2304ac eval_id=35e188d3-f85a-420b-9b81-2711f6eccb22 type=_core namespace=- job_id=node-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:03:49.186+0900 [DEBUG] worker: ack evaluation: worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 eval_id=65ed2922-3a99-e9e3-6c69-86b60d586d2c type=_core namespace=- job_id=csi-volume-claim-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:03:49.186+0900 [DEBUG] worker: dequeued evaluation: worker_id=1679aea4-1711-2212-ccc6-246eff2304ac eval_id=44d368bc-055c-7972-1cdc-985d5eb2b291 type=_core namespace=- job_id=csi-plugin-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:03:49.186+0900 [DEBUG] worker: dequeued evaluation: worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 eval_id=2599daf8-aa2a-57df-3f9d-8bac8d7947aa type=_core namespace=- job_id=local-token-expired-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:03:49.187+0900 [DEBUG] worker: ack evaluation: worker_id=1679aea4-1711-2212-ccc6-246eff2304ac eval_id=44d368bc-055c-7972-1cdc-985d5eb2b291 type=_core namespace=- job_id=csi-plugin-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:03:49.187+0900 [DEBUG] worker: ack evaluation: worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 eval_id=2599daf8-aa2a-57df-3f9d-8bac8d7947aa type=_core namespace=- job_id=local-token-expired-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:03:49.187+0900 [DEBUG] worker: dequeued evaluation: worker_id=1679aea4-1711-2212-ccc6-246eff2304ac eval_id=91178f9e-31b8-717c-7d05-eb4538f4d398 type=_core namespace=- job_id=job-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:03:49.187+0900 [DEBUG] worker: ack evaluation: worker_id=1679aea4-1711-2212-ccc6-246eff2304ac eval_id=91178f9e-31b8-717c-7d05-eb4538f4d398 type=_core namespace=- job_id=job-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:04:04.045+0900 [DEBUG] client: received stale allocation information; retrying: index=18 min_index=18
+    2026-03-11T21:05:48.702+0900 [DEBUG] http: request complete: method=GET path=/v1/regions duration="218.291µs"
+    2026-03-11T21:05:48.705+0900 [DEBUG] http: request complete: method=GET path=/v1/acl/token/self duration="933.958µs"
+    2026-03-11T21:05:48.713+0900 [DEBUG] http: request complete: method=GET path=/v1/operator/license duration="9.417µs"
+    2026-03-11T21:05:48.713+0900 [DEBUG] http: request complete: method=GET path=/v1/agent/members duration="223.958µs"
+    2026-03-11T21:05:48.714+0900 [DEBUG] http: request complete: method=POST path=/v1/search/fuzzy duration=1.17075ms
+    2026-03-11T21:05:48.722+0900 [DEBUG] http: request complete: method=GET path="/v1/jobs/statuses?filter=&namespace=%2A&per_page=25" duration="570.167µs"
+    2026-03-11T21:05:48.730+0900 [DEBUG] http: request complete: method=GET path=/v1/agent/self duration="411.5µs"
+    2026-03-11T21:05:48.807+0900 [DEBUG] http: request complete: method=GET path=/v1/node/pools duration="711.375µs"
+    2026-03-11T21:05:48.807+0900 [DEBUG] http: request complete: method=GET path=/v1/namespaces duration="492.667µs"
+    2026-03-11T21:05:48.816+0900 [DEBUG] http: request complete: method=POST path="/v1/jobs/statuses?namespace=*" duration="422.791µs"
+    2026-03-11T21:05:48.860+0900 [DEBUG] http: request complete: method=GET path=/v1/namespaces duration="206.041µs"
+    2026-03-11T21:05:52.943+0900 [DEBUG] http: request complete: method=GET path=/v1/job/sandbox-agents duration="766.792µs"
+    2026-03-11T21:05:52.954+0900 [DEBUG] http: request complete: method=GET path=/v1/namespaces duration="212.875µs"
+    2026-03-11T21:05:52.954+0900 [DEBUG] http: request complete: method=GET path=/v1/job/sandbox-agents/evaluations duration="604.542µs"
+    2026-03-11T21:05:52.961+0900 [DEBUG] http: request complete: method=GET path=/v1/job/sandbox-agents/allocations?index=1 duration="635.167µs"
+    2026-03-11T21:05:52.961+0900 [DEBUG] http: request complete: method=GET path=/v1/job/sandbox-agents/deployment?index=1 duration="195.125µs"
+    2026-03-11T21:05:52.974+0900 [DEBUG] http: request complete: method=GET path=/v1/job/sandbox-agents/summary duration="283.458µs"
+    2026-03-11T21:05:52.982+0900 [DEBUG] http: request complete: method=GET path="/v1/vars?prefix=nomad%2Fjobs%2Fsandbox-agents" duration="900.5µs"
+    2026-03-11T21:05:52.982+0900 [DEBUG] http: request complete: method=GET path=/v1/job/sandbox-agents/deployment duration="162.042µs"
+    2026-03-11T21:05:53.063+0900 [DEBUG] http: request complete: method=GET path=/v1/client/allocation/d3815bea-cce1-439a-beea-52ca6f60f008/stats duration="967.583µs"
+    2026-03-11T21:05:53.071+0900 [DEBUG] http: request complete: method=GET path=/v1/client/allocation/d3815bea-cce1-439a-beea-52ca6f60f008/stats duration="228.916µs"
+    2026-03-11T21:05:53.073+0900 [DEBUG] http: request complete: method=GET path=/v1/client/allocation/d3815bea-cce1-439a-beea-52ca6f60f008/stats duration="142.958µs"
+    2026-03-11T21:05:53.076+0900 [DEBUG] http: request complete: method=GET path=/v1/job/sandbox-agents/deployment duration="126.333µs"
+    2026-03-11T21:05:53.076+0900 [DEBUG] http: request complete: method=GET path=/v1/node/5e0aca14-a95d-8e9a-1e43-d952b2705bdf duration=2.104917ms
+    2026-03-11T21:05:55.598+0900 [DEBUG] http: request complete: method=GET path=/v1/client/allocation/d3815bea-cce1-439a-beea-52ca6f60f008/stats duration=1.136041ms
+    2026-03-11T21:05:55.600+0900 [DEBUG] http: request complete: method=GET path=/v1/client/allocation/d3815bea-cce1-439a-beea-52ca6f60f008/stats duration="296.041µs"
+    2026-03-11T21:05:57.329+0900 [DEBUG] http: request complete: method=GET path=/v1/job/sandbox-agents duration="965.708µs"
+    2026-03-11T21:05:57.344+0900 [DEBUG] http: request complete: method=GET path=/v1/job/sandbox-agents/submission?version=0 duration="299.792µs"
+    2026-03-11T21:05:59.885+0900 [DEBUG] http: request complete: method=GET path=/v1/job/sandbox-agents/versions?index=1 duration=1.463084ms
+    2026-03-11T21:05:59.898+0900 [DEBUG] http: request complete: method=GET path=/v1/job/sandbox-agents/versions duration="345.625µs"
+    2026-03-11T21:05:59.903+0900 [DEBUG] http: request complete: method=GET path=/v1/job/sandbox-agents/versions?diffs=true duration="638.292µs"
+    2026-03-11T21:05:59.907+0900 [DEBUG] http: request complete: method=GET path=/v1/job/sandbox-agents/versions?diffs=true duration="251.959µs"
+    2026-03-11T21:06:00.522+0900 [DEBUG] http: request complete: method=GET path=/v1/job/sandbox-agents/deployments duration="823.166µs"
+    2026-03-11T21:06:02.094+0900 [DEBUG] http: request complete: method=GET path=/v1/client/allocation/d3815bea-cce1-439a-beea-52ca6f60f008/stats duration="243.875µs"
+    2026-03-11T21:06:02.097+0900 [DEBUG] http: request complete: method=GET path=/v1/client/allocation/d3815bea-cce1-439a-beea-52ca6f60f008/stats duration="219.125µs"
+    2026-03-11T21:06:04.566+0900 [DEBUG] http: request complete: method=GET path=/v1/job/sandbox-agents/services duration=1.242417ms
+    2026-03-11T21:06:05.224+0900 [DEBUG] http: request complete: method=GET path="/v1/vars?path=nomad%2Fjobs" duration="637.292µs"
+    2026-03-11T21:06:06.646+0900 [DEBUG] http: request complete: method=GET path=/v1/client/allocation/d3815bea-cce1-439a-beea-52ca6f60f008/stats duration="240.5µs"
+    2026-03-11T21:06:06.648+0900 [DEBUG] http: request complete: method=GET path=/v1/client/allocation/d3815bea-cce1-439a-beea-52ca6f60f008/stats duration="119.375µs"
+    2026-03-11T21:06:09.167+0900 [DEBUG] http: request complete: method=GET path=/v1/client/allocation/d3815bea-cce1-439a-beea-52ca6f60f008/stats duration="967.625µs"
+    2026-03-11T21:06:09.171+0900 [DEBUG] http: request complete: method=GET path=/v1/client/allocation/d3815bea-cce1-439a-beea-52ca6f60f008/stats duration="313.375µs"
+    2026-03-11T21:06:09.388+0900 [DEBUG] http: request complete: method=GET path=/v1/nodes duration=10.071417ms
+    2026-03-11T21:06:09.391+0900 [DEBUG] http: request complete: method=GET path=/v1/node/pools duration="89.792µs"
+    2026-03-11T21:06:09.393+0900 [DEBUG] http: request complete: method=GET path=/v1/nodes?index=1 duration="113.25µs"
+    2026-03-11T21:06:09.396+0900 [DEBUG] http: request complete: method=GET path=/v1/node/5e0aca14-a95d-8e9a-1e43-d952b2705bdf/allocations duration="865.958µs"
+    2026-03-11T21:06:09.401+0900 [DEBUG] http: request complete: method=GET path=/v1/node/5e0aca14-a95d-8e9a-1e43-d952b2705bdf duration="167.166µs"
+    2026-03-11T21:06:09.412+0900 [DEBUG] http: request complete: method=GET path=/v1/node/5e0aca14-a95d-8e9a-1e43-d952b2705bdf duration="366µs"
+    2026-03-11T21:06:11.003+0900 [DEBUG] http: request complete: method=GET path=/v1/status/leader?region=global duration="372.333µs"
+    2026-03-11T21:06:11.026+0900 [DEBUG] http: request complete: method=GET path=/v1/agent/members duration="487.542µs"
+    2026-03-11T21:06:11.031+0900 [DEBUG] http: request complete: method=GET path=/v1/nodes duration="180.375µs"
+    2026-03-11T21:06:12.117+0900 [DEBUG] http: request complete: method=GET path=/v1/nodes?resources=true duration="513.958µs"
+    2026-03-11T21:06:12.117+0900 [DEBUG] http: request complete: method=GET path="/v1/allocations?namespace=%2A&resources=true&task_states=false" duration="856.75µs"
+    2026-03-11T21:06:12.117+0900 [DEBUG] http: request complete: method=GET path=/v1/node/pools duration="858.417µs"
+    2026-03-11T21:08:00.045+0900 [DEBUG] http: request complete: method=GET path="/v1/jobs/statuses?filter=&namespace=%2A&per_page=25" duration="951.792µs"
+    2026-03-11T21:08:00.061+0900 [DEBUG] http: request complete: method=GET path=/v1/namespaces duration="641.791µs"
+    2026-03-11T21:08:00.073+0900 [DEBUG] http: request complete: method=GET path=/v1/node/pools duration="280.083µs"
+    2026-03-11T21:08:00.076+0900 [DEBUG] http: request complete: method=POST path="/v1/jobs/statuses?namespace=*" duration=1.425959ms
+    2026-03-11T21:08:00.882+0900 [DEBUG] http: request complete: method=GET path=/v1/namespaces duration="955.75µs"
+    2026-03-11T21:08:00.885+0900 [DEBUG] http: request complete: method=GET path="/v1/volumes?namespace=%2A&type=host" duration=1.893875ms
+    2026-03-11T21:08:00.885+0900 [DEBUG] http: request complete: method=GET path="/v1/volumes?namespace=%2A&type=csi" duration=4.508ms
+    2026-03-11T21:08:01.643+0900 [DEBUG] http: request complete: method=GET path="/v1/vars?namespace=*" duration="374.292µs"
+    2026-03-11T21:08:01.643+0900 [DEBUG] http: request complete: method=GET path=/v1/namespaces duration="242.834µs"
+    2026-03-11T21:08:02.930+0900 [DEBUG] http: request complete: method=GET path=/v1/node/5e0aca14-a95d-8e9a-1e43-d952b2705bdf duration=1.421125ms
+    2026-03-11T21:08:02.931+0900 [DEBUG] http: request complete: method=GET path=/v1/nodes duration="634.25µs"
+    2026-03-11T21:08:02.933+0900 [DEBUG] http: request complete: method=GET path=/v1/node/pools duration="669.875µs"
+    2026-03-11T21:08:03.775+0900 [DEBUG] http: request complete: method=GET path=/v1/agent/members duration="428.625µs"
+    2026-03-11T21:08:03.789+0900 [DEBUG] http: request complete: method=GET path=/v1/nodes duration="285.75µs"
+    2026-03-11T21:08:04.576+0900 [DEBUG] http: request complete: method=GET path="/v1/allocations?namespace=%2A&resources=true&task_states=false" duration="289.25µs"
+    2026-03-11T21:08:04.576+0900 [DEBUG] http: request complete: method=GET path=/v1/nodes?resources=true duration="218.916µs"
+    2026-03-11T21:08:04.576+0900 [DEBUG] http: request complete: method=GET path=/v1/node/pools duration="136.666µs"
+    2026-03-11T21:08:49.183+0900 [DEBUG] worker: dequeued evaluation: worker_id=1679aea4-1711-2212-ccc6-246eff2304ac eval_id=e11989a2-9d65-a689-e2fc-71836146aeda type=_core namespace=- job_id=eval-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:08:49.183+0900 [DEBUG] worker: dequeued evaluation: worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 eval_id=899eda04-9eae-ba24-1820-857ab5b30cfc type=_core namespace=- job_id=csi-volume-claim-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:08:49.184+0900 [DEBUG] worker: ack evaluation: worker_id=1679aea4-1711-2212-ccc6-246eff2304ac eval_id=e11989a2-9d65-a689-e2fc-71836146aeda type=_core namespace=- job_id=eval-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:08:49.185+0900 [DEBUG] worker: ack evaluation: worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 eval_id=899eda04-9eae-ba24-1820-857ab5b30cfc type=_core namespace=- job_id=csi-volume-claim-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:08:49.185+0900 [DEBUG] worker: dequeued evaluation: worker_id=1679aea4-1711-2212-ccc6-246eff2304ac eval_id=183b8b20-cb09-c5a4-0cbe-c7cd95abde92 type=_core namespace=- job_id=root-key-rotate-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:08:49.185+0900 [DEBUG] worker: dequeued evaluation: worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 eval_id=defd9451-cdd2-275f-56de-f84f572324fb type=_core namespace=- job_id=local-token-expired-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:08:49.185+0900 [DEBUG] worker: ack evaluation: worker_id=1679aea4-1711-2212-ccc6-246eff2304ac eval_id=183b8b20-cb09-c5a4-0cbe-c7cd95abde92 type=_core namespace=- job_id=root-key-rotate-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:08:49.185+0900 [DEBUG] worker: ack evaluation: worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 eval_id=defd9451-cdd2-275f-56de-f84f572324fb type=_core namespace=- job_id=local-token-expired-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:08:49.185+0900 [DEBUG] worker: dequeued evaluation: worker_id=1679aea4-1711-2212-ccc6-246eff2304ac eval_id=e124109f-31fe-b484-8791-cc5e8135958c type=_core namespace=- job_id=node-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:08:49.185+0900 [DEBUG] worker: dequeued evaluation: worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 eval_id=4dbfd3a9-cfbe-5094-2a67-0535a4c20c82 type=_core namespace=- job_id=csi-plugin-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:08:49.185+0900 [DEBUG] worker: ack evaluation: worker_id=1679aea4-1711-2212-ccc6-246eff2304ac eval_id=e124109f-31fe-b484-8791-cc5e8135958c type=_core namespace=- job_id=node-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:08:49.185+0900 [DEBUG] worker: ack evaluation: worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 eval_id=4dbfd3a9-cfbe-5094-2a67-0535a4c20c82 type=_core namespace=- job_id=csi-plugin-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:08:49.185+0900 [DEBUG] worker: dequeued evaluation: worker_id=1679aea4-1711-2212-ccc6-246eff2304ac eval_id=1d8ac515-fba4-3ebe-057d-54c5f95a7115 type=_core namespace=- job_id=job-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:08:49.185+0900 [DEBUG] worker: dequeued evaluation: worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 eval_id=cfc66465-15bb-e3ee-73df-1185412d43c3 type=_core namespace=- job_id=deployment-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:08:49.186+0900 [DEBUG] worker: ack evaluation: worker_id=1679aea4-1711-2212-ccc6-246eff2304ac eval_id=1d8ac515-fba4-3ebe-057d-54c5f95a7115 type=_core namespace=- job_id=job-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:08:49.186+0900 [DEBUG] worker: ack evaluation: worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 eval_id=cfc66465-15bb-e3ee-73df-1185412d43c3 type=_core namespace=- job_id=deployment-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:08:49.186+0900 [DEBUG] worker: dequeued evaluation: worker_id=1679aea4-1711-2212-ccc6-246eff2304ac eval_id=5e1b4844-1fe1-b326-6a22-12ac1e010f49 type=_core namespace=- job_id=one-time-token-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:08:49.186+0900 [DEBUG] worker: dequeued evaluation: worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 eval_id=2f2afd2d-483f-b324-97a4-70b271b8fb08 type=_core namespace=- job_id=variables-rekey node_id="" triggered_by=scheduled
+    2026-03-11T21:08:49.186+0900 [DEBUG] worker: ack evaluation: worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 eval_id=2f2afd2d-483f-b324-97a4-70b271b8fb08 type=_core namespace=- job_id=variables-rekey node_id="" triggered_by=scheduled
+    2026-03-11T21:08:49.187+0900 [DEBUG] worker: ack evaluation: worker_id=1679aea4-1711-2212-ccc6-246eff2304ac eval_id=5e1b4844-1fe1-b326-6a22-12ac1e010f49 type=_core namespace=- job_id=one-time-token-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:09:05.249+0900 [DEBUG] client: received stale allocation information; retrying: index=18 min_index=18
+    2026-03-11T21:10:55.627+0900 [DEBUG] http: request complete: method=GET path=/v1/namespaces?index=1 duration=5m6.811147792s
+    2026-03-11T21:10:55.646+0900 [DEBUG] http: request complete: method=GET path=/v1/job/sandbox-agents/summary?index=16 duration=5m0.681783167s
+    2026-03-11T21:11:00.473+0900 [DEBUG] http: request complete: method=GET path="/v1/jobs/statuses?filter=&namespace=%2A&per_page=25&index=20" duration=5m11.656389459s
+    2026-03-11T21:11:01.822+0900 [DEBUG] http: request complete: method=POST path="/v1/jobs/statuses?index=20&namespace=*" duration=5m10.979780666s
+    2026-03-11T21:11:04.460+0900 [DEBUG] http: request complete: method=GET path=/v1/job/sandbox-agents/deployments?index=20 duration=5m3.9179195s
+    2026-03-11T21:11:04.592+0900 [DEBUG] http: request complete: method=GET path=/v1/job/sandbox-agents/evaluations?index=21 duration=5m11.630421833s
+    2026-03-11T21:11:05.213+0900 [DEBUG] http: request complete: method=GET path=/v1/job/sandbox-agents?index=20 duration=5m12.243354709s
+    2026-03-11T21:11:08.818+0900 [DEBUG] http: request complete: method=GET path=/v1/job/sandbox-agents/allocations?index=20 duration=5m13.85212875s
+    2026-03-11T21:11:09.530+0900 [DEBUG] http: request complete: method=GET path=/v1/job/sandbox-agents/evaluations?index=21 duration=5m6.28682525s
+    2026-03-11T21:11:10.447+0900 [DEBUG] http: request complete: method=GET path=/v1/node/5e0aca14-a95d-8e9a-1e43-d952b2705bdf/allocations?index=18 duration=5m1.030419875s
+    2026-03-11T21:11:11.112+0900 [DEBUG] http: request complete: method=GET path=/v1/job/sandbox-agents/deployment?index=20 duration=5m16.146246584s
+    2026-03-11T21:11:12.723+0900 [DEBUG] http: request complete: method=GET path=/v1/job/sandbox-agents/summary?index=16 duration=5m6.095003083s
+    2026-03-11T21:11:13.620+0900 [DEBUG] http: request complete: method=GET path=/v1/job/sandbox-agents/allocations?index=20 duration=5m11.546267625s
+    2026-03-11T21:11:16.963+0900 [DEBUG] http: request complete: method=GET path=/v1/job/sandbox-agents/services?index=1 duration=5m12.375307792s
+    2026-03-11T21:11:17.988+0900 [DEBUG] http: request complete: method=GET path=/v1/job/sandbox-agents/deployment?index=20 duration=5m11.364755125s
+    2026-03-11T21:11:18.155+0900 [DEBUG] http: request complete: method=GET path=/v1/job/sandbox-agents/versions?index=20 duration=5m17.6071455s
+    2026-03-11T21:11:18.276+0900 [DEBUG] http: request complete: method=GET path=/v1/job/sandbox-agents/allocations?index=20 duration=5m11.661289125s
+    2026-03-11T21:11:24.718+0900 [DEBUG] http: request complete: method=GET path=/v1/job/sandbox-agents/evaluations?index=21 duration=5m18.102709583s
+    2026-03-11T21:13:02.912+0900 [DEBUG] http: request complete: method=GET path="/v1/volumes?namespace=%2A&type=host&index=1" duration=5m1.991002125s
+    2026-03-11T21:13:06.684+0900 [DEBUG] http: request complete: method=GET path="/v1/jobs/statuses?filter=&namespace=%2A&per_page=25&index=20" duration=5m6.609909125s
+    2026-03-11T21:13:06.767+0900 [DEBUG] http: request complete: method=GET path=/v1/node/5e0aca14-a95d-8e9a-1e43-d952b2705bdf/allocations?index=18 duration=5m3.827439125s
+    2026-03-11T21:13:09.835+0900 [DEBUG] http: request complete: method=GET path="/v1/volumes?namespace=%2A&type=csi&index=1" duration=5m8.914120958s
+    2026-03-11T21:13:11.732+0900 [DEBUG] http: request complete: method=GET path=/v1/namespaces?index=1 duration=5m11.657387166s
+    2026-03-11T21:13:12.049+0900 [DEBUG] http: request complete: method=GET path=/v1/namespaces?index=1 duration=5m11.135104083s
+    2026-03-11T21:13:17.402+0900 [DEBUG] http: request complete: method=GET path=/v1/nodes?index=18 duration=5m14.467590459s
+    2026-03-11T21:13:49.185+0900 [DEBUG] worker: dequeued evaluation: worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 eval_id=e9d6b5a8-6cf7-2e14-252b-2ea77b6b0f3f type=_core namespace=- job_id=eval-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:13:49.185+0900 [DEBUG] worker: dequeued evaluation: worker_id=1679aea4-1711-2212-ccc6-246eff2304ac eval_id=fa79bcd0-9a32-b9c4-deb5-9ef625203c32 type=_core namespace=- job_id=deployment-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:13:49.186+0900 [DEBUG] worker: ack evaluation: worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 eval_id=e9d6b5a8-6cf7-2e14-252b-2ea77b6b0f3f type=_core namespace=- job_id=eval-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:13:49.186+0900 [DEBUG] worker: ack evaluation: worker_id=1679aea4-1711-2212-ccc6-246eff2304ac eval_id=fa79bcd0-9a32-b9c4-deb5-9ef625203c32 type=_core namespace=- job_id=deployment-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:13:49.186+0900 [DEBUG] worker: dequeued evaluation: worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 eval_id=7d35e1ef-63d9-90b9-a559-f2e36f9eb52f type=_core namespace=- job_id=job-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:13:49.186+0900 [DEBUG] worker: dequeued evaluation: worker_id=1679aea4-1711-2212-ccc6-246eff2304ac eval_id=977e8124-613d-4781-4620-18a9da15587c type=_core namespace=- job_id=local-token-expired-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:13:49.186+0900 [DEBUG] worker: ack evaluation: worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 eval_id=7d35e1ef-63d9-90b9-a559-f2e36f9eb52f type=_core namespace=- job_id=job-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:13:49.186+0900 [DEBUG] worker: ack evaluation: worker_id=1679aea4-1711-2212-ccc6-246eff2304ac eval_id=977e8124-613d-4781-4620-18a9da15587c type=_core namespace=- job_id=local-token-expired-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:13:49.186+0900 [DEBUG] worker: dequeued evaluation: worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 eval_id=f6e92be9-655c-076f-abbb-a23c65b12d1a type=_core namespace=- job_id=csi-plugin-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:13:49.186+0900 [DEBUG] worker: dequeued evaluation: worker_id=1679aea4-1711-2212-ccc6-246eff2304ac eval_id=a1879d2a-cd95-c3e9-712f-04ba3c72035b type=_core namespace=- job_id=csi-volume-claim-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:13:49.187+0900 [DEBUG] worker: ack evaluation: worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 eval_id=f6e92be9-655c-076f-abbb-a23c65b12d1a type=_core namespace=- job_id=csi-plugin-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:13:49.187+0900 [DEBUG] worker: ack evaluation: worker_id=1679aea4-1711-2212-ccc6-246eff2304ac eval_id=a1879d2a-cd95-c3e9-712f-04ba3c72035b type=_core namespace=- job_id=csi-volume-claim-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:13:49.187+0900 [DEBUG] worker: dequeued evaluation: worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 eval_id=b05e4ad9-f385-e372-fe40-f77e064550cf type=_core namespace=- job_id=node-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:13:49.187+0900 [DEBUG] worker: ack evaluation: worker_id=724a7f53-7712-670c-1366-13c24b64c3e0 eval_id=b05e4ad9-f385-e372-fe40-f77e064550cf type=_core namespace=- job_id=node-gc node_id="" triggered_by=scheduled
+    2026-03-11T21:14:19.988+0900 [DEBUG] client: received stale allocation information; retrying: index=18 min_index=18
+    2026-03-11T21:14:31.233+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:14:32.236+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:14:33.237+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:14:34.126+0900 [DEBUG] http: request complete: method=GET path=/v1/regions duration="99.667µs"
+    2026-03-11T21:14:34.160+0900 [DEBUG] http: request complete: method=GET path=/v1/acl/token/self duration="152.209µs"
+    2026-03-11T21:14:34.172+0900 [DEBUG] http: request complete: method=GET path=/v1/operator/license duration="3.959µs"
+    2026-03-11T21:14:34.172+0900 [DEBUG] http: request complete: method=GET path=/v1/agent/members duration="181.125µs"
+    2026-03-11T21:14:34.172+0900 [DEBUG] http: request complete: method=POST path=/v1/search/fuzzy duration="240.417µs"
+    2026-03-11T21:14:34.187+0900 [DEBUG] http: request complete: method=GET path=/v1/node/pools duration="309.5µs"
+    2026-03-11T21:14:34.187+0900 [DEBUG] http: request complete: method=GET path="/v1/allocations?namespace=%2A&resources=true&task_states=false" duration="172.417µs"
+    2026-03-11T21:14:34.187+0900 [DEBUG] http: request complete: method=GET path=/v1/nodes?resources=true duration="354.167µs"
+    2026-03-11T21:14:34.191+0900 [DEBUG] http: request complete: method=GET path=/v1/agent/self duration="274.417µs"
+    2026-03-11T21:14:34.239+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:14:34.263+0900 [DEBUG] http: request complete: method=GET path=/v1/namespaces duration="250.75µs"
+    2026-03-11T21:14:34.977+0900 [DEBUG] http: request complete: method=GET path=/v1/regions duration="243.875µs"
+    2026-03-11T21:14:35.006+0900 [DEBUG] http: request complete: method=GET path=/v1/acl/token/self duration="290.333µs"
+    2026-03-11T21:14:35.011+0900 [DEBUG] http: request complete: method=GET path=/v1/operator/license duration="7.333µs"
+    2026-03-11T21:14:35.012+0900 [DEBUG] http: request complete: method=GET path=/v1/agent/members duration="733.917µs"
+    2026-03-11T21:14:35.012+0900 [DEBUG] http: request complete: method=POST path=/v1/search/fuzzy duration="323.583µs"
+    2026-03-11T21:14:35.017+0900 [DEBUG] http: request complete: method=GET path=/v1/node/pools duration="278.042µs"
+    2026-03-11T21:14:35.017+0900 [DEBUG] http: request complete: method=GET path=/v1/nodes?resources=true duration="194.583µs"
+    2026-03-11T21:14:35.017+0900 [DEBUG] http: request complete: method=GET path="/v1/allocations?namespace=%2A&resources=true&task_states=false" duration="629.083µs"
+    2026-03-11T21:14:35.021+0900 [DEBUG] http: request complete: method=GET path=/v1/agent/self duration="493.875µs"
+    2026-03-11T21:14:35.074+0900 [DEBUG] http: request complete: method=GET path=/v1/namespaces duration=1.862666ms
+    2026-03-11T21:14:35.241+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:14:36.242+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:14:36.799+0900 [DEBUG] http: request complete: method=GET path="/v1/jobs/statuses?filter=&namespace=%2A&per_page=25" duration="789.75µs"
+    2026-03-11T21:14:36.818+0900 [DEBUG] http: request complete: method=GET path=/v1/node/pools duration="412.875µs"
+    2026-03-11T21:14:36.818+0900 [DEBUG] http: request complete: method=GET path=/v1/namespaces duration="580.542µs"
+    2026-03-11T21:14:36.826+0900 [DEBUG] http: request complete: method=POST path="/v1/jobs/statuses?namespace=*" duration="314.791µs"
+    2026-03-11T21:14:37.244+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:14:37.747+0900 [DEBUG] http: request complete: method=GET path="/v1/volumes?namespace=%2A&type=host" duration="995.542µs"
+    2026-03-11T21:14:37.747+0900 [DEBUG] http: request complete: method=GET path="/v1/volumes?namespace=%2A&type=csi" duration=1.34925ms
+    2026-03-11T21:14:37.748+0900 [DEBUG] http: request complete: method=GET path=/v1/namespaces duration=1.212042ms
+    2026-03-11T21:14:38.177+0900 [DEBUG] http: request complete: method=GET path=/v1/nodes duration="154.834µs"
+    2026-03-11T21:14:38.246+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:14:38.260+0900 [DEBUG] http: request complete: method=GET path=/v1/agent/self duration="630.542µs"
+    2026-03-11T21:14:38.328+0900 [DEBUG] http: request complete: method=GET path=/v1/namespaces duration="143µs"
+    2026-03-11T21:14:38.328+0900 [DEBUG] http: request complete: method=GET path="/v1/vars?namespace=*" duration="152.666µs"
+    2026-03-11T21:14:39.251+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:14:39.449+0900 [DEBUG] http: request complete: method=GET path=/v1/namespaces duration="624.292µs"
+    2026-03-11T21:14:39.450+0900 [DEBUG] http: request complete: method=GET path="/v1/volumes?namespace=%2A&type=host" duration="235.041µs"
+    2026-03-11T21:14:39.450+0900 [DEBUG] http: request complete: method=GET path="/v1/volumes?namespace=%2A&type=csi" duration=1.441375ms
+    2026-03-11T21:14:40.039+0900 [DEBUG] http: request complete: method=GET path="/v1/jobs/statuses?filter=&namespace=%2A&per_page=25" duration="758µs"
+    2026-03-11T21:14:40.046+0900 [DEBUG] http: request complete: method=GET path=/v1/namespaces duration="432.333µs"
+    2026-03-11T21:14:40.047+0900 [DEBUG] http: request complete: method=GET path=/v1/node/pools duration="294.5µs"
+    2026-03-11T21:14:40.057+0900 [DEBUG] http: request complete: method=POST path="/v1/jobs/statuses?namespace=*" duration="603.917µs"
+    2026-03-11T21:14:40.254+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:14:41.255+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:14:42.257+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:14:43.258+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:14:44.263+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:14:45.265+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:14:46.268+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:14:47.270+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:14:48.271+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:14:49.274+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:14:50.276+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:14:51.278+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:14:52.280+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:14:53.282+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:14:54.283+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:14:55.284+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:14:56.286+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:14:57.288+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:14:58.291+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:14:58.542+0900 [DEBUG] http: request complete: method=GET path=/v1/node/pools duration="820.958µs"
+    2026-03-11T21:14:58.543+0900 [DEBUG] http: request complete: method=GET path=/v1/nodes duration="982.875µs"
+    2026-03-11T21:14:58.554+0900 [DEBUG] http: request complete: method=GET path=/v1/nodes?index=1 duration=5.42175ms
+    2026-03-11T21:14:58.567+0900 [DEBUG] http: request complete: method=GET path=/v1/node/5e0aca14-a95d-8e9a-1e43-d952b2705bdf/allocations duration="391.75µs"
+    2026-03-11T21:14:58.572+0900 [DEBUG] http: request complete: method=GET path=/v1/node/5e0aca14-a95d-8e9a-1e43-d952b2705bdf duration="326.083µs"
+    2026-03-11T21:14:59.293+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:15:00.061+0900 [DEBUG] http: request complete: method=GET path=/v1/regions duration="248.583µs"
+    2026-03-11T21:15:00.084+0900 [DEBUG] http: request complete: method=GET path=/v1/acl/token/self duration="291.541µs"
+    2026-03-11T21:15:00.091+0900 [DEBUG] http: request complete: method=GET path=/v1/operator/license duration="7.5µs"
+    2026-03-11T21:15:00.092+0900 [DEBUG] http: request complete: method=GET path=/v1/agent/members duration="337.333µs"
+    2026-03-11T21:15:00.092+0900 [DEBUG] http: request complete: method=POST path=/v1/search/fuzzy duration="303.375µs"
+    2026-03-11T21:15:00.098+0900 [DEBUG] http: request complete: method=GET path=/v1/node/pools duration="454.25µs"
+    2026-03-11T21:15:00.099+0900 [DEBUG] http: request complete: method=GET path=/v1/nodes duration="206.708µs"
+    2026-03-11T21:15:00.101+0900 [DEBUG] http: request complete: method=GET path=/v1/agent/self duration="818.958µs"
+    2026-03-11T21:15:00.157+0900 [DEBUG] http: request complete: method=GET path=/v1/node/5e0aca14-a95d-8e9a-1e43-d952b2705bdf/allocations duration="615.75µs"
+    2026-03-11T21:15:00.158+0900 [DEBUG] http: request complete: method=GET path=/v1/node/5e0aca14-a95d-8e9a-1e43-d952b2705bdf duration="483.542µs"
+    2026-03-11T21:15:00.294+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:15:00.759+0900 [DEBUG] http: request complete: method=GET path=/v1/regions duration="258.666µs"
+    2026-03-11T21:15:00.781+0900 [DEBUG] http: request complete: method=GET path=/v1/acl/token/self duration="350.5µs"
+    2026-03-11T21:15:00.786+0900 [DEBUG] http: request complete: method=GET path=/v1/operator/license duration="6.708µs"
+    2026-03-11T21:15:00.787+0900 [DEBUG] http: request complete: method=GET path=/v1/agent/members duration="374.875µs"
+    2026-03-11T21:15:00.788+0900 [DEBUG] http: request complete: method=POST path=/v1/search/fuzzy duration="439.084µs"
+    2026-03-11T21:15:00.792+0900 [DEBUG] http: request complete: method=GET path=/v1/node/pools duration="461.667µs"
+    2026-03-11T21:15:00.792+0900 [DEBUG] http: request complete: method=GET path=/v1/nodes duration="574.833µs"
+    2026-03-11T21:15:00.796+0900 [DEBUG] http: request complete: method=GET path=/v1/agent/self duration="611.75µs"
+    2026-03-11T21:15:00.836+0900 [DEBUG] http: request complete: method=GET path=/v1/node/5e0aca14-a95d-8e9a-1e43-d952b2705bdf/allocations duration="828.834µs"
+    2026-03-11T21:15:00.839+0900 [DEBUG] http: request complete: method=GET path=/v1/node/5e0aca14-a95d-8e9a-1e43-d952b2705bdf duration="684.333µs"
+    2026-03-11T21:15:01.294+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:15:01.324+0900 [DEBUG] http: request complete: method=GET path=/v1/regions duration="450.75µs"
+    2026-03-11T21:15:01.351+0900 [DEBUG] http: request complete: method=GET path=/v1/acl/token/self duration=5.215125ms
+    2026-03-11T21:15:01.355+0900 [DEBUG] http: request complete: method=GET path=/v1/operator/license duration="7.083µs"
+    2026-03-11T21:15:01.360+0900 [DEBUG] http: request complete: method=POST path=/v1/search/fuzzy duration=4.111958ms
+    2026-03-11T21:15:01.360+0900 [DEBUG] http: request complete: method=GET path=/v1/agent/members duration=4.217792ms
+    2026-03-11T21:15:01.365+0900 [DEBUG] http: request complete: method=GET path=/v1/nodes duration="125.166µs"
+    2026-03-11T21:15:01.365+0900 [DEBUG] http: request complete: method=GET path=/v1/node/pools duration="95.375µs"
+    2026-03-11T21:15:01.369+0900 [DEBUG] http: request complete: method=GET path=/v1/agent/self duration="222.625µs"
+    2026-03-11T21:15:01.410+0900 [DEBUG] http: request complete: method=GET path=/v1/node/5e0aca14-a95d-8e9a-1e43-d952b2705bdf/allocations duration="526.792µs"
+    2026-03-11T21:15:01.414+0900 [DEBUG] http: request complete: method=GET path=/v1/node/5e0aca14-a95d-8e9a-1e43-d952b2705bdf duration="554.167µs"
+    2026-03-11T21:15:02.297+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:15:03.298+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:15:04.301+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:15:05.303+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:15:06.304+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:15:07.307+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:15:08.308+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:15:09.311+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:15:10.312+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:15:11.314+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:15:12.316+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:15:13.318+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:15:14.320+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:15:15.323+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+    2026-03-11T21:15:16.324+0900 [ERROR] client.host_stats: failed to find disk usage of alloc: alloc_dir=/Users/annas/Desktop/code/platform-docs/sandbox-platform/bin/nomad-data/alloc error="no such file or directory"
+==> Caught signal: terminated
+    2026-03-11T21:15:17.190+0900 [INFO]  agent: requesting shutdown
+    2026-03-11T21:15:17.190+0900 [INFO]  client: shutting down
+    2026-03-11T21:15:17.190+0900 [INFO]  client.alloc_runner.task_runner: Task event: alloc_id=d3815bea-cce1-439a-beea-52ca6f60f008 task=fc-agent type=Killing msg="Sent interrupt. Waiting 5s before force killing" failed=false
+    2026-03-11T21:15:17.193+0900 [DEBUG] client.driver_mgr.raw_exec.executor.stdio: received EOF, stopping recv loop: alloc_id=d3815bea-cce1-439a-beea-52ca6f60f008 driver=raw_exec task_name=fc-agent err="rpc error: code = Unavailable desc = error reading from server: EOF"
+    2026-03-11T21:15:17.196+0900 [INFO]  client.driver_mgr.raw_exec.executor: plugin process exited: alloc_id=d3815bea-cce1-439a-beea-52ca6f60f008 driver=raw_exec task_name=fc-agent plugin=/opt/homebrew/bin/nomad id=48455
+    2026-03-11T21:15:17.204+0900 [DEBUG] client.driver_mgr.raw_exec.executor: plugin exited: alloc_id=d3815bea-cce1-439a-beea-52ca6f60f008 driver=raw_exec task_name=fc-agent
+    2026-03-11T21:15:17.204+0900 [INFO]  client.alloc_runner.task_runner: Task event: alloc_id=d3815bea-cce1-439a-beea-52ca6f60f008 task=fc-agent type=Terminated msg="Exit Code: 0" failed=false
+    2026-03-11T21:15:17.204+0900 [INFO]  client.alloc_runner.task_runner: Task event: alloc_id=d3815bea-cce1-439a-beea-52ca6f60f008 task=fc-agent type=Killed msg="Task successfully killed" failed=false
+    2026-03-11T21:15:17.205+0900 [DEBUG] client.alloc_runner.task_runner.task_hook.logmon.stdio: received EOF, stopping recv loop: alloc_id=d3815bea-cce1-439a-beea-52ca6f60f008 task=fc-agent err="rpc error: code = Unavailable desc = error reading from server: EOF"
+    2026-03-11T21:15:17.207+0900 [INFO]  client.alloc_runner.task_runner.task_hook.logmon: plugin process exited: alloc_id=d3815bea-cce1-439a-beea-52ca6f60f008 task=fc-agent plugin=/opt/homebrew/bin/nomad id=48454
+    2026-03-11T21:15:17.211+0900 [DEBUG] client.alloc_runner.task_runner.task_hook.logmon: plugin exited: alloc_id=d3815bea-cce1-439a-beea-52ca6f60f008 task=fc-agent
+    2026-03-11T21:15:17.211+0900 [DEBUG] client.alloc_runner.task_runner: task run loop exiting: alloc_id=d3815bea-cce1-439a-beea-52ca6f60f008 task=fc-agent
+    2026-03-11T21:15:17.211+0900 [INFO]  client.gc: marking allocation for GC: alloc_id=d3815bea-cce1-439a-beea-52ca6f60f008
+    2026-03-11T21:15:17.212+0900 [INFO]  client.plugin: shutting down plugin manager: plugin-type=dynamic_host_volume
+    2026-03-11T21:15:17.212+0900 [INFO]  client.plugin: plugin manager finished: plugin-type=dynamic_host_volume
+    2026-03-11T21:15:17.212+0900 [INFO]  client.plugin: shutting down plugin manager: plugin-type=device
+    2026-03-11T21:15:17.212+0900 [INFO]  client.plugin: plugin manager finished: plugin-type=device
+    2026-03-11T21:15:17.212+0900 [INFO]  client.plugin: shutting down plugin manager: plugin-type=driver
+    2026-03-11T21:15:17.212+0900 [INFO]  client.plugin: plugin manager finished: plugin-type=driver
+    2026-03-11T21:15:17.212+0900 [INFO]  client.plugin: shutting down plugin manager: plugin-type=csi
+    2026-03-11T21:15:17.212+0900 [INFO]  client.plugin: plugin manager finished: plugin-type=csi
+    2026-03-11T21:15:17.212+0900 [DEBUG] client.server_mgr: shutting down
+    2026-03-11T21:15:17.212+0900 [INFO]  nomad: shutting down server
+    2026-03-11T21:15:17.212+0900 [DEBUG] nomad: stopping old scheduling worker: id=0ba5dd07-5816-12c2-f715-b69db7f5a8c3 index=1 of=8
+    2026-03-11T21:15:17.212+0900 [DEBUG] nomad: stopping old scheduling worker: id=41978563-121a-2f48-7887-cc57a4355a9d index=2 of=8
+    2026-03-11T21:15:17.212+0900 [DEBUG] nomad: stopping old scheduling worker: id=ab2ff2e4-3a0a-2950-da23-fa121ec1b66b index=3 of=8
+    2026-03-11T21:15:17.212+0900 [DEBUG] nomad: stopping old scheduling worker: id=dd354e98-2967-1cfd-a4db-3df311e5e125 index=4 of=8
+    2026-03-11T21:15:17.212+0900 [DEBUG] nomad: stopping old scheduling worker: id=7c4e1e2e-be9c-e9da-573d-6f680a6295a1 index=5 of=8
+    2026-03-11T21:15:17.212+0900 [DEBUG] nomad: stopping old scheduling worker: id=67754ef9-9686-2067-8e7a-12a8e9889963 index=6 of=8
+    2026-03-11T21:15:17.212+0900 [DEBUG] nomad: stopping old scheduling worker: id=724a7f53-7712-670c-1366-13c24b64c3e0 index=7 of=8
+    2026-03-11T21:15:17.212+0900 [DEBUG] worker: stopped: worker_id=41978563-121a-2f48-7887-cc57a4355a9d
+    2026-03-11T21:15:17.212+0900 [DEBUG] worker: stopped: worker_id=1679aea4-1711-2212-ccc6-246eff2304ac
+    2026-03-11T21:15:17.212+0900 [DEBUG] worker: stopped: worker_id=dd354e98-2967-1cfd-a4db-3df311e5e125
+    2026-03-11T21:15:17.212+0900 [DEBUG] worker: stopped: worker_id=724a7f53-7712-670c-1366-13c24b64c3e0
+    2026-03-11T21:15:17.212+0900 [DEBUG] nomad: shutting down leader loop
+    2026-03-11T21:15:17.212+0900 [INFO]  nomad: cluster leadership lost
+    2026-03-11T21:15:17.212+0900 [DEBUG] nomad.autopilot: state update routine is now stopped
+    2026-03-11T21:15:17.212+0900 [DEBUG] nomad.autopilot: autopilot is now stopped
+    2026-03-11T21:15:17.212+0900 [DEBUG] worker: stopped: worker_id=ab2ff2e4-3a0a-2950-da23-fa121ec1b66b
+    2026-03-11T21:15:17.212+0900 [DEBUG] worker: stopped: worker_id=67754ef9-9686-2067-8e7a-12a8e9889963
+    2026-03-11T21:15:17.212+0900 [DEBUG] worker: stopped: worker_id=7c4e1e2e-be9c-e9da-573d-6f680a6295a1
+    2026-03-11T21:15:17.212+0900 [DEBUG] nomad: stopping old scheduling worker: id=1679aea4-1711-2212-ccc6-246eff2304ac index=8 of=8
+    2026-03-11T21:15:17.212+0900 [DEBUG] worker: stopped: worker_id=0ba5dd07-5816-12c2-f715-b69db7f5a8c3
+    2026-03-11T21:15:17.212+0900 [WARN]  nomad: serf: Shutdown without a Leave
+    2026-03-11T21:15:17.212+0900 [INFO]  agent: shutdown complete
+    2026-03-11T21:15:17.212+0900 [DEBUG] http: shutting down http server

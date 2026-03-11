@@ -1,12 +1,14 @@
 module github.com/sandbox/platform
 
-go 1.23
+go 1.25
 
 require (
-	github.com/gofiber/fiber/v2 v2.52.5
 	github.com/google/uuid v1.6.0
-	github.com/minio/minio-go/v7 v7.0.74
-	github.com/prometheus/client_golang v1.20.0
-	github.com/redis/go-redis/v9 v9.6.1
-	github.com/spf13/viper v1.19.0
+	github.com/lib/pq v1.10.9
+	github.com/redis/go-redis/v9 v9.7.0
+)
+
+require (
+	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 )

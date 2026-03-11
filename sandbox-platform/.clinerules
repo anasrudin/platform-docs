@@ -1,4 +1,4 @@
-# sandbox-platform — Cline Rules
+# sandbox-platform — Cline Rules (Nomad Edition)
 
 ## READ EVERY SESSION
 Before doing anything, read all files in order:
@@ -8,6 +8,12 @@ Before doing anything, read all files in order:
 4. memory-bank/techContext.md
 5. memory-bank/activeContext.md
 6. memory-bank/progress.md
+7. memory-bank/milestone-timeline.md
+8. memory-bank/architecture-graph.md
+9. memory-bank/runtime-topology.md
+10. memory-bank/tool-registry.md
+11. memory-bank/decisions.md
+12. memory-bank/development-log.md
 
 If any file is missing, recreate it from conversation context before continuing.
 
@@ -49,50 +55,67 @@ internal/runtime  → runtime execution only
 internal/queue    → Redis only, NEVER import internal/storage
 internal/storage  → object storage only
 internal/tool     → tool manifest/registry only
+services/         → standalone services (tool-registry, etc.)
 ```
 
 Each package may only import packages deeper in the hierarchy, never upward.
 
 ---
 
+## ARCHITECTURE RULES
+
+1. **Nomad is scheduler ONLY** — no business logic in Nomad jobs
+2. Control Plane owns ALL business logic (routing, policy, billing)
+3. Host agents are execution-only — no decision making
+4. 3 runtime tiers: WASM (fast), Firecracker (secure), GUI (interactive)
+5. Per-sandbox isolation: network (TAP), filesystem (overlay), process (cgroups)
+
+---
+
 ## RUNTIME TIERS
 
-| Tier     | Runtime     | Phase |
-|----------|-------------|-------|
-| wasm     | Wasmtime CLI| 1     |
-| microvm  | Firecracker | 2     |
-| gui      | Docker      | 3     |
+| Tier | Runtime | Phase |
+|---|---|---|
+| wasm | Wasmtime 22 | 1 |
+| firecracker | Firecracker 1.8 + KVM | 1 |
+| gui | Chromium + Playwright | 2 |
 
 - WASM modules live at: `{dataDir}/wasm-modules/{tool}.wasm`
-- VM snapshots live at: `{dataDir}/snapshots/{name}/state` and `/mem`
-- Docker image: `sandbox/desktop-runner:latest`
+- VM snapshots live at: `{dataDir}/snapshots/{name}/` (kernel.bin, rootfs.ext4, vmstate.bin, memory.bin)
+- GUI sessions: Chromium managed by gui-host-agent
 
 ---
 
 ## FIRECRACKER RULES
 
 - Always create VM from snapshot — cold boot is only for snapshot building
-- Snapshot builder script: `scripts/build-snapshot.sh`
-- VM socket path pattern: `/tmp/firecracker-{vmID}.sock`
-- Firecracker API runs over Unix socket, not TCP
-- After job completes: stop VM, replenish pool asynchronously
+- Snapshot builder tool: `tools/snapshot-builder/`
+- VM runs inside jailer with chroot + netns
+- Per-VM overlay filesystem: read-only base + writable layer
+- Per-VM TAP device → bridge → iptables policy
+- After job completes: cleanup overlay, recycle/destroy VM
 - Target cold-start from snapshot: **< 80ms**
 
 ---
 
 ## TOOL MANIFEST CONTRACT
 
-Every tool directory must contain a `manifest.json`:
+Every tool directory must contain a `manifest.json` (or `tool.yaml`):
 ```json
 {
   "name": "tool_name",
-  "tier": "wasm|microvm|gui",
+  "runtime": "wasm|firecracker|gui",
   "entrypoint": "main.py",
-  "timeout": 60
+  "timeout": 60,
+  "memory": "256mb",
+  "cpu": "1000mhz",
+  "egress": "offline|restricted|public",
+  "skills": ["coding", "scraping"]
 }
 ```
+
 Tools communicate via:
-- **Input**: `TOOL_INPUT` environment variable (JSON string)
+- **Input**: `TOOL_INPUT` environment variable (JSON string) or stdin
 - **Output**: stdout (JSON string with at minimum `"exit_code"` field)
 
 ---
@@ -100,22 +123,12 @@ Tools communicate via:
 ## API CONTRACT
 
 - `POST /v1/execute` → async → HTTP 202 + `{"job_id":"..."}`
-- `GET /v1/job/:id` → poll for result
+- `GET /v1/jobs/:id` → poll for result
 - `GET /v1/tools` → list registered tools
-- `GET /v1/nodes` → list active nodes
+- `GET /v1/skills` → list skill → tool mapping
+- `GET /v1/health` → healthcheck
 - Rate limit 429 → must include `Retry-After: 60` header
 - All responses: `Content-Type: application/json`
-- Empty JWT key path = dev mode (inject `agent_id="dev-agent"`) — LOCAL DEV ONLY
-
----
-
-## KNOWN BUGS (from original codebase — now fixed)
-
-| Bug | File | Fix |
-|-----|------|-----|
-| Rate limiter tier always "microvm" | middleware/ratelimit.go | Tier injected from handler via `c.Locals("tier")` before middleware reads it |
-| Config key not in viper | cmd/api-server/config.go | All config via viper, no `os.Getenv` bypasses |
-| `grpc.WithTimeout` deprecated | (removed) | Use `context.WithTimeout` + `grpc.NewClient()` |
 
 ---
 
@@ -129,8 +142,14 @@ Tools communicate via:
 
 ## UPDATE MEMORY BANK
 
-After any significant task, update the relevant file:
-- Finished feature implementation → update `progress.md`
-- New architecture decision → update `systemPatterns.md`
-- New bug or issue → update `activeContext.md`
-- Starting new focus area → update `activeContext.md`
+After any significant task, update the relevant files:
+
+| What Changed | Update These Files |
+|---|---|
+| Feature implemented | `progress.md`, `activeContext.md` |
+| Architecture decision | `decisions.md`, `systemPatterns.md` |
+| New bug or issue found | `activeContext.md` |
+| Milestone completed | `milestone-timeline.md`, `progress.md` |
+| Infrastructure changed | `runtime-topology.md` |
+| Tool added/modified | `tool-registry.md`, `progress.md` |
+| Any session work | `development-log.md` (append entry) |

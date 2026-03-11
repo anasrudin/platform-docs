@@ -1,82 +1,131 @@
-BINARY_API    := bin/api-server
-BINARY_AGENT  := bin/node-agent
-MODULE        := github.com/sandbox/platform
+BINARY_API    := bin/platform-api
+BINARY_WASM   := bin/wasm-agent
+BINARY_FC     := bin/fc-agent
+BINARY_GUI    := bin/gui-agent
 
-.PHONY: all build api-server node-agent tidy lint test wasm-tools docker-desktop clean
+.PHONY: all build run dev stop clean dev-nomad nomad-start test-nomad-agents \
+        infra-setup-node infra-setup-control infra-migrate infra-buckets infra-verify \
+        infra-fc-setup infra-fc-test
 
-## Default: build both binaries
 all: build
 
-## Build both binaries
-build: api-server node-agent
-
-## Build the API server
-api-server:
+build:
+	@echo "Building binaries..."
 	@mkdir -p bin
-	go build -o $(BINARY_API) ./cmd/api-server
+	go build -o $(BINARY_API) ./cmd/platform-api
+	go build -o $(BINARY_WASM) ./cmd/wasm-agent
+	go build -o $(BINARY_FC) ./cmd/fc-agent
+	go build -o $(BINARY_GUI) ./cmd/gui-agent
 
-## Build the node agent
-node-agent:
-	@mkdir -p bin
-	go build -o $(BINARY_AGENT) ./cmd/node-agent
+run: build
+	@echo "Starting platform-api and agents..."
+	./$(BINARY_API) & echo $$! > bin/api.pid
+	./$(BINARY_WASM) & echo $$! > bin/wasm.pid
+	./$(BINARY_FC) & echo $$! > bin/fc.pid
+	./$(BINARY_GUI) & echo $$! > bin/gui.pid
+	@echo "All services running natively. Press Ctrl+C to stop."
+	@trap 'kill $$(cat bin/*.pid) 2>/dev/null; rm -f bin/*.pid; exit 0' INT TERM; wait
 
-## Fetch dependencies
-tidy:
-	go mod tidy
+dev: stop
+	@echo "Starting infrastructure (PostgreSQL, Redis)..."
+	docker compose up -d
+	@echo "Waiting for backing services to be healthy..."
+	@sleep 5
+	@$(MAKE) run
 
-## Run linter (requires golangci-lint)
-lint:
-	golangci-lint run ./...
+stop:
+	@echo "Stopping infrastructure and services..."
+	@-kill $$(cat bin/*.pid 2>/dev/null) 2>/dev/null || true
+	@-rm -f bin/*.pid
+	@-nomad job stop sandbox-agents 2>/dev/null || true
+	-docker compose down || true
 
-## Run unit tests
-test:
-	go test -race -count=1 ./...
-
-## Build WASM tools (requires wasip1 target)
-wasm-tools:
-	@echo "Building WASM tools..."
-	@for tool in html_parse json_parse markdown_convert docx_generate; do \
-		echo "  Building $$tool.wasm"; \
-		GOOS=wasip1 GOARCH=wasm go build \
-			-o /var/sandbox/wasm-modules/$$tool.wasm \
-			./../../sandbox-tools/wasm/$$tool/ || true; \
-	done
-
-## Build Docker desktop-runner image
-docker-desktop:
-	docker build -t sandbox/desktop-runner:latest ./docker/desktop-runner
-
-## Build Firecracker snapshot (requires kernel + rootfs)
-## Usage: make snapshot KERNEL=/path/vmlinux ROOTFS=/path/rootfs.ext4
-snapshot:
-	@[[ -n "$(KERNEL)" ]] || (echo "KERNEL= required" && exit 1)
-	@[[ -n "$(ROOTFS)" ]] || (echo "ROOTFS= required" && exit 1)
-	bash scripts/build-snapshot.sh --kernel $(KERNEL) --rootfs $(ROOTFS)
-
-## Start local dev services
-dev-up:
-	docker compose -f infra/docker-compose.yml up -d
-
-## Stop local dev services
-dev-down:
-	docker compose -f infra/docker-compose.yml down
-
-## Run API server in dev mode (no JWT, no config file)
-run-api:
-	./$(BINARY_API)
-
-## Run node agent (dev mode, node-id=dev-node-1)
-run-agent:
-	./$(BINARY_AGENT) --node-id dev-node-1 --data-dir /tmp/sandbox-data
-
-## Quick smoke test
-ping:
-	curl -s http://localhost:8080/health | python3 -m json.tool
-
-test-job:
-	curl -s -X POST http://localhost:8080/v1/execute \
-		-H "Content-Type: application/json" \
-		-d '{"tool":"python_run","input":{"code":"print(1+1)"}}' | python3 -m json.tool
-
-clean:
+clean: stop
+	@echo "Cleaning up build artifacts..."
 	rm -rf bin/
+
+nomad-start:
+	@echo "Starting 3-node Nomad Cluster..."
+	@mkdir -p scripts
+	@chmod +x scripts/start-nomad-cluster.sh
+	@./scripts/start-nomad-cluster.sh
+
+test-nomad-agents: build nomad-start
+	@echo "Deploying fc-agent via Nomad..."
+	@echo 'job "sandbox-agents" {' > bin/sandbox-agents.nomad
+	@echo '  datacenters = ["dc1"]' >> bin/sandbox-agents.nomad
+	@echo '  type = "service"' >> bin/sandbox-agents.nomad
+	@echo '  group "firecracker-group" {' >> bin/sandbox-agents.nomad
+	@echo '    task "fc-agent" {' >> bin/sandbox-agents.nomad
+	@echo '      driver = "raw_exec"' >> bin/sandbox-agents.nomad
+	@echo '      config { command = "$(PWD)/bin/fc-agent" }' >> bin/sandbox-agents.nomad
+	@echo '    }' >> bin/sandbox-agents.nomad
+	@echo '  }' >> bin/sandbox-agents.nomad
+	@echo '}' >> bin/sandbox-agents.nomad
+	@nomad job run bin/sandbox-agents.nomad
+	@echo "fc-agent deployed to Nomad. Checking status..."
+	@sleep 2
+	@nomad job status sandbox-agents
+
+dev-nomad: stop
+	@echo "Starting infrastructure (PostgreSQL, Redis)..."
+	docker compose up -d
+	@echo "Waiting for backing services to be healthy..."
+	@sleep 5
+	@$(MAKE) test-nomad-agents
+	@echo "Starting platform-api locally..."
+	./$(BINARY_API) & echo $$! > bin/api.pid
+	@echo "Starting other agents locally (wasm, gui)..."
+	./$(BINARY_WASM) & echo $$! > bin/wasm.pid
+	./$(BINARY_GUI) & echo $$! > bin/gui.pid
+	@echo "All services running (fc-agent in Nomad). Press Ctrl+C to stop."
+	@trap 'kill $$(cat bin/*.pid 2>/dev/null) 2>/dev/null; rm -f bin/*.pid; nomad job stop sandbox-agents 2>/dev/null; docker compose down; exit 0' INT TERM; wait
+
+# ── Day 1-2 Production Infrastructure ────────────────────────────────────────
+# Run these on GCP nodes to set up the production cluster.
+
+## infra-setup-node: Install Nomad on all nodes (run on each node)
+infra-setup-node:
+	@echo "Installing base dependencies + Nomad..."
+	@chmod +x infra/scripts/setup-all-nodes.sh
+	sudo infra/scripts/setup-all-nodes.sh
+
+## infra-setup-control: Install PostgreSQL + Redis + MinIO on node1
+infra-setup-control:
+	@echo "Installing control node services (PostgreSQL, Redis, MinIO)..."
+	@chmod +x infra/scripts/setup-control-node.sh
+	sudo infra/scripts/setup-control-node.sh
+
+## infra-migrate: Run PostgreSQL migrations against NODE1_IP (default: localhost)
+infra-migrate:
+	@echo "Running database migrations..."
+	psql -h $${NODE1_IP:-localhost} -U platform -d platform \
+		-f infra/postgres/migrations/001_init.sql
+	@echo "✅ Migrations applied."
+
+## infra-buckets: Create MinIO buckets (requires mc in PATH or MINIO_ENDPOINT set)
+infra-buckets:
+	@echo "Initializing MinIO buckets..."
+	@chmod +x infra/minio/init-buckets.sh
+	MINIO_ENDPOINT=$${MINIO_ENDPOINT:-http://localhost:9000} \
+		infra/minio/init-buckets.sh
+
+## infra-verify: Check all Day 1-2 goals against NODE1_IP (default: localhost)
+infra-verify:
+	@echo "Verifying Day 1-2 infrastructure..."
+	@chmod +x infra/scripts/verify-day1-2.sh
+	infra/scripts/verify-day1-2.sh $${NODE1_IP:-localhost}
+
+# ── Day 3 — Firecracker ───────────────────────────────────────────────────────
+
+## infra-fc-setup: Install Firecracker + KVM on runtime node (run on node2/node3)
+infra-fc-setup:
+	@echo "Installing Firecracker runtime..."
+	@chmod +x infra/scripts/setup-firecracker.sh
+	sudo infra/scripts/setup-firecracker.sh
+
+## infra-fc-test: Verify all Day 3 Firecracker goals
+infra-fc-test:
+	@echo "Testing Firecracker..."
+	@chmod +x infra/scripts/test-firecracker.sh
+	sudo infra/scripts/test-firecracker.sh

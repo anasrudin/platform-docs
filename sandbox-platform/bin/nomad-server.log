@@ -1,0 +1,36 @@
+==> WARNING: mTLS is not configured - Nomad is not secure without mTLS!
+==> WARNING: Bootstrap mode enabled! Potentially unsafe operation.
+==> Loaded configuration from bin/nomad-server.hcl
+==> Starting Nomad agent...
+==> Nomad agent configuration:
+
+       Advertise Addrs: HTTP: 127.0.0.1:4646; RPC: 127.0.0.1:4647; Serf: 127.0.0.1:4648
+            Bind Addrs: HTTP: [127.0.0.1:4646]; RPC: 127.0.0.1:4647; Serf: 127.0.0.1:4648
+                Client: false
+             Log Level: INFO
+               Node Id: 285067a7-7f3a-9bb8-d247-2f8462052700
+                Region: global (DC: dc1)
+                Server: true
+               Version: 1.11.3
+
+==> Nomad agent started! Log data will stream in below:
+
+    2026-03-11T21:16:11.931+0900 [INFO]  nomad: setting up raft bolt store: no_freelist_sync=false
+    2026-03-11T21:16:11.957+0900 [INFO]  nomad.raft: initial configuration: index=1 servers="[{Suffrage:Voter ID:59f2b3eb-6592-9017-6fdb-97ea7a682166 Address:127.0.0.1:4647}]"
+    2026-03-11T21:16:11.958+0900 [INFO]  nomad.raft: entering follower state: follower="Node at 127.0.0.1:4647 [Follower]" leader-address= leader-id=
+    2026-03-11T21:16:11.959+0900 [INFO]  nomad: serf: EventMemberJoin: node1.global 127.0.0.1
+    2026-03-11T21:16:11.959+0900 [INFO]  nomad: starting scheduling worker(s): num_workers=8 schedulers=["service", "batch", "system", "sysbatch", "_core"]
+    2026-03-11T21:16:11.960+0900 [INFO]  nomad: started scheduling worker(s): num_workers=8 schedulers=["service", "batch", "system", "sysbatch", "_core"]
+    2026-03-11T21:16:11.961+0900 [INFO]  nomad: adding server: name=node1.global addr=127.0.0.1:4647 dc=dc1
+    2026-03-11T21:16:13.709+0900 [WARN]  nomad.raft: heartbeat timeout reached, starting election: last-leader-addr= last-leader-id=
+    2026-03-11T21:16:13.709+0900 [INFO]  nomad.raft: entering candidate state: node="Node at 127.0.0.1:4647 [Candidate]" term=2
+    2026-03-11T21:16:13.709+0900 [INFO]  nomad.raft: pre-vote successful, starting election: term=2 tally=1 refused=0 votesNeeded=1
+    2026-03-11T21:16:13.748+0900 [INFO]  nomad.raft: election won: term=2 tally=1
+    2026-03-11T21:16:13.748+0900 [INFO]  nomad.raft: entering leader state: leader="Node at 127.0.0.1:4647 [Leader]"
+    2026-03-11T21:16:13.749+0900 [INFO]  nomad: cluster leadership acquired
+    2026-03-11T21:16:13.802+0900 [INFO]  nomad.core: established cluster id: cluster_id=6eea43f6-a641-0b23-b0b1-91089a0f7530 create_time=1773231373793217000
+    2026-03-11T21:16:13.802+0900 [INFO]  nomad: eval broker status modified: paused=false
+    2026-03-11T21:16:13.802+0900 [INFO]  nomad: blocked evals status modified: paused=false
+    2026-03-11T21:16:13.867+0900 [INFO]  nomad.keyring: initialized keyring: id=48e19b0a-0b33-2c5e-14a0-4ed7f04baefd
+    2026-03-11T21:16:20.241+0900 [WARN]  nomad.client: node registration without introduction token: enforcement_level=warn node_id=b2b81868-b22d-db91-7150-3b654fe8fb26 node_pool=default node_name=node2
+    2026-03-11T21:16:20.241+0900 [WARN]  nomad.client: node registration without introduction token: enforcement_level=warn node_id=3cfbd14f-930d-a23e-f348-03f1d3ff50c2 node_pool=default node_name=node3

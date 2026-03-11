@@ -1,180 +1,79 @@
-# System Patterns — sandbox-tools
+# System Patterns
 
-## Tool Lifecycle (end-to-end)
+## Architecture Pattern: Multi-Engine Sandbox
+
+The platform follows a **3-layer architecture**:
 
 ```
-Agent sends:  {"tool": "python_run", "input": {"code": "print(1+1)"}}
-                │
-                ▼
-Platform reads manifest.json  →  tier = "microvm"
-                │
-                ▼
-Platform routes to Firecracker runtime
-                │
-                ▼
-VM boots from snapshot (~80ms)
-                │
-                ▼
-Platform sets: TOOL_INPUT = '{"code":"print(1+1)"}'
-Platform exec: python3 /tool/python_run/main.py
-                │
-                ▼
-Tool reads TOOL_INPUT, executes code, prints result to stdout:
-  {"stdout": "2\n", "stderr": "", "exit_code": 0}
-                │
-                ▼
-Platform captures stdout  →  stores in Redis  →  agent polls and gets result
+Control Plane  →  Orchestration (Nomad)  →  Runtime Layer (3 pools)
 ```
 
-## Standard Tool Template (Python)
+All business logic in Control Plane. Nomad only does placement. Host agents manage local runtime.
 
-```python
-#!/usr/bin/env python3
-"""
-{tool_name} — one-line description.
-Input:  {"field": "value", ...}
-Output: {"result": ..., "exit_code": 0}
-"""
-import json
-import os
-import sys
+## Key Patterns
 
+### 1. Adapter Pattern (Runtime Routing)
 
-def main():
-    raw = os.environ.get("TOOL_INPUT", "{}")
-    try:
-        inp = json.loads(raw)
-    except json.JSONDecodeError as e:
-        out({"error": f"invalid input JSON: {e}", "exit_code": 1})
-        return
+Control Plane uses adapters to abstract runtime differences:
 
-    # --- validate required fields ---
-    value = inp.get("field")
-    if not value:
-        out({"error": "field is required", "exit_code": 1})
-        return
-
-    # --- do work ---
-    try:
-        result = do_work(value)
-        out({"result": result, "exit_code": 0})
-    except Exception as e:
-        out({"error": str(e), "exit_code": 1})
-
-
-def do_work(value):
-    return value  # replace with real logic
-
-
-def out(d: dict):
-    """Always use this. Never print raw strings to stdout."""
-    print(json.dumps(d))
-
-
-if __name__ == "__main__":
-    main()
+```
+RuntimeRouter → WASMAdapter  → wasm-host-agent
+             → FCAdapter    → fc-host-agent
+             → GUIAdapter   → gui-host-agent
 ```
 
-## Standard Tool Template (WASM / Go)
+Each adapter translates a generic `JobRequest` into runtime-specific instructions.
 
-```go
-//go:build wasip1
+### 2. Warm Pool Pattern
 
-package main
+Pre-allocated runtime instances ready for immediate use:
 
-import (
-    "encoding/json"
-    "fmt"
-    "os"
-)
+| Runtime | Strategy | Target |
+|---|---|---|
+| WASM | Preloaded module instances | < 1ms acquire |
+| Firecracker | Snapshot-restored microVMs | < 50ms acquire |
+| GUI | Pre-booted Chromium sessions | ~300ms acquire |
 
-type Input struct {
-    Field string `json:"field"`
-}
+Pool auto-scales based on queue depth and usage.
 
-type Output struct {
-    Result any    `json:"result,omitempty"`
-    Error  string `json:"error,omitempty"`
-}
+### 3. Overlay Filesystem Pattern
 
-func main() {
-    if len(os.Args) < 2 {
-        writeOut(Output{Error: "TOOL_INPUT argument required"})
-        return
-    }
-    var inp Input
-    if err := json.Unmarshal([]byte(os.Args[1]), &inp); err != nil {
-        writeOut(Output{Error: "invalid input: " + err.Error()})
-        return
-    }
-    if inp.Field == "" {
-        writeOut(Output{Error: "field is required"})
-        return
-    }
-    writeOut(Output{Result: inp.Field}) // replace with real logic
-}
-
-func writeOut(o Output) {
-    data, _ := json.Marshal(o)
-    fmt.Println(string(data))
-}
+```
+Read-only base image (shared)
+   + Per-sandbox writable overlay
+   = Clean, deterministic execution
 ```
 
-## Path Safety Pattern (file-accessing tools)
+After job completes: delete overlay, base image untouched.
 
-Any tool that reads or writes user-provided paths **must** validate them:
+### 4. TAP Network Isolation Pattern
 
-```python
-WORK_DIR = "/work"
+Each sandbox gets its own TAP device → Linux bridge → iptables policy → NAT.
 
-def safe_path(user_path: str) -> str:
-    abs_p = os.path.realpath(os.path.join(WORK_DIR, user_path.lstrip("/")))
-    if not abs_p.startswith(WORK_DIR):
-        raise ValueError(f"path traversal attempt: {user_path!r}")
-    return abs_p
+```
+VM → tap{N} → bridge0 → iptables (allowlist) → NAT → Internet
 ```
 
-Never skip this check, even if the path looks safe.
+Cleanup: delete TAP, remove iptables rules, remove tc qdisc.
 
-## Error Handling Pattern
+### 5. Skill-Based Tool Discovery
 
-| Situation | Correct behaviour |
-|-----------|------------------|
-| Invalid JSON in TOOL_INPUT | `{"error": "invalid input JSON: ...", "exit_code": 1}` |
-| Required field missing | `{"error": "X is required", "exit_code": 1}` |
-| Path traversal attempt | `{"error": "path traversal", "exit_code": 1}` |
-| Subprocess fails | Include `stdout`, `stderr`, and actual `exit_code` from subprocess |
-| Unexpected exception | `{"error": str(e), "exit_code": 1}` — never crash silently |
-| Success | `{"result": ..., "exit_code": 0}` |
-
-## Playwright Pattern (GUI tools)
-
-```python
-import os
-from playwright.sync_api import sync_playwright
-
-os.environ.setdefault("DISPLAY", ":99")
-
-with sync_playwright() as pw:
-    browser = pw.chromium.launch(
-        executable_path="/usr/bin/chromium-browser",
-        args=["--no-sandbox", "--disable-dev-shm-usage"],
-    )
-    page = browser.new_page(viewport={"width": 1280, "height": 800})
-    try:
-        page.goto(url, wait_until="domcontentloaded", timeout=30_000)
-        # ... do work ...
-    finally:
-        browser.close()  # always close, even on error
+```
+Agent task → Skill resolver → Tool selector → Runtime router → Execute
 ```
 
-## What Tools Must Never Do
+Skills map abstract capabilities to concrete tools with fallback chains.
 
-| Forbidden | Why |
-|-----------|-----|
-| Write to stdout before the final JSON line | Platform reads only stdout; partial output breaks parsing |
-| Import from other tool directories | Tools are isolated; no shared Python packages between tools |
-| Access `/etc`, `/var`, `/home` | Outside sandbox boundary |
-| `sys.exit()` without printing output first | Agent gets empty result, no error message |
-| `print("debug info")` to stdout | Breaks JSON parsing; use `sys.stderr.write()` for debug |
-| Sleep for > timeout value | Platform will kill the process; waste of VM slot |
+### 6. Execution Recording
+
+Every job produces an immutable execution record (stored in MinIO) that enables deterministic replay.
+
+## Anti-Patterns (Forbidden)
+
+| Anti-Pattern | Reason |
+|---|---|
+| Business logic in Nomad | Nomad is scheduler only |
+| Shared filesystem across sandboxes | Security violation |
+| Direct internet access from WASM | WASM is offline/restricted |
+| Global mutable state | Breaks multi-tenancy |
+| `panic()` in production code | Use error returns |
