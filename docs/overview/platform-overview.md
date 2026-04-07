@@ -5,61 +5,61 @@
 | Status | Active |
 | Audience | New contributors, reviewers, operators |
 | Scope | High-level orientation to the platform and its documentation set |
-| Last updated | March 11, 2026 |
+| Last updated | April 8, 2026 |
 
 ## Executive summary
 
-The platform is a multi-runtime execution system designed to run untrusted workloads through specialized runtime paths. It combines a control plane for policy and routing with Nomad for placement and host agents for runtime-specific execution.
+Sandbox Platform is a multi-runtime execution system for running untrusted workloads in isolated environments. It combines a Python-based control plane (FastAPI) with Nomad for job placement, Consul for service discovery, HAProxy for load balancing, and Firecracker microVMs, WASM, and GUI runtimes for execution isolation.
 
-Week 1 runtime foundation is complete. The current delivery phase is now centered on control-plane capabilities such as auth, rate limiting, discovery, and monitoring, while preserving the completed runtime foundation as the baseline for future isolation and GUI work.
+The Week 1 runtime foundation is complete. Five advanced feature phases have shipped: Consul service discovery, HAProxy load balancing, auto-scaling, package management, and mutual TLS. All 235 unit tests pass.
 
 ## What the platform does
 
-The platform supports three execution tiers:
+| Runtime | Primary purpose | Startup |
+|---|---|---|
+| WASM | Fast, bounded, stateless tool execution | < 5 ms |
+| Firecracker | Secure compute for untrusted code | 20–80 ms from snapshot |
+| GUI (Chromium) | Browser automation and visual workflows | ~300 ms warm |
 
-| Runtime | Primary purpose |
-|---|---|
-| WASM | Fast, bounded, mostly stateless tool execution |
-| Firecracker | Secure execution for untrusted code and heavier compute |
-| GUI | Browser automation and interactive workflows |
+A caller submits an execution request to the API with a tool name and input. The platform routes the job to the right runtime, executes it in an isolated environment, and returns structured output. Artifacts, snapshots, and package wheels are persisted in MinIO and survive the sandbox lifecycle.
 
 ## What exists today
 
-- a reader-facing documentation set under `docs/`
-- a local sandbox under `sandbox-platform/`
-- minimal API, session, and routing behavior for local validation
-- real Firecracker and WASM execution paths with development-environment fallbacks
-- artifact, snapshot, and module flows backed by MinIO integration
-- a stubbed GUI execution path
-- a documented three-week MVP roadmap
+| Area | Status |
+|---|---|
+| Python 3.12+ codebase (FastAPI, psycopg2, redis-py, minio) | Complete |
+| Firecracker runtime (pool, snapshot restore, guest transport) | Complete — real + sim mode |
+| WASM runtime (Wasmtime CLI, MinIO module cache) | Complete — real + sim mode |
+| GUI runtime | Stub — sim mode only |
+| HTTP API (health, sessions, execute, artifacts, packages) | Complete |
+| Consul service discovery and session KV | Complete — opt-in |
+| HAProxy load balancing with consul-template | Complete — infra templates available |
+| Auto-scaling (metrics, policy, Nomad API) | Complete — opt-in |
+| Package management (pip download, MinIO cache) | Complete — opt-in |
+| Mutual TLS (TLS 1.3, ECDSA P-256, cert rotation) | Complete — opt-in |
+| Unit test suite (235 tests, ≥ 95% coverage on new code) | Complete |
 
-## What comes next
+## What is not yet implemented
 
-The current roadmap prioritizes:
-
-- API gateway authentication and rate limiting
-- tool registry and skill-based routing
-- observability through Prometheus and Grafana
-- GUI execution hardening and isolation
-
-Use [../operations/roadmap.md](../operations/roadmap.md) for the milestone plan and [../architecture/system-overview.md](../architecture/system-overview.md) for the end-to-end system view.
+- Package install executed inside a Firecracker VM session (currently host-only)
+- Auto-scaler node list dynamically populated from Consul (currently empty)
+- mTLS on outbound calls (agent → Consul, scaler → Nomad)
+- `PUT /packages/{name}` and `GET /packages/{name}` endpoints
+- API authentication and rate limiting
+- Tool registry API
+- GUI runtime hardening
 
 ## Documentation entry points
 
 | Need | Document |
 |---|---|
-| Understand the full system shape | [../architecture/system-overview.md](../architecture/system-overview.md) |
-| Review current runtime facts | [../reference/runtime-reference.md](../reference/runtime-reference.md) |
-| Review the tool model | [../reference/tools-reference.md](../reference/tools-reference.md) |
-| Review the HTTP API | [../reference/api-spec.md](../reference/api-spec.md) |
-| Run the platform locally | [../how-to/run-locally.md](../how-to/run-locally.md) |
-| Deploy the MVP environment | [../how-to/deploy.md](../how-to/deploy.md) |
-| Review delivery milestones | [../operations/roadmap.md](../operations/roadmap.md) |
-
-## Non-goals for this document
-
-- detailed runtime internals
-- operational procedures
-- historical design comparison
-
-Those topics belong in architecture, how-to, operations, and archive documents.
+| First run — install, start, execute | [../product/getting-started.md](../product/getting-started.md) |
+| Full system architecture | [../architecture/system-overview.md](../architecture/system-overview.md) |
+| All HTTP API endpoints | [../reference/api-spec.md](../reference/api-spec.md) |
+| Runtime internals and tiers | [../reference/runtime-reference.md](../reference/runtime-reference.md) |
+| Run locally (Python) | [../how-to/run-locally.md](../how-to/run-locally.md) |
+| Deploy to a cluster | [../how-to/deploy.md](../how-to/deploy.md) |
+| Diagnose problems | [../how-to/troubleshooting.md](../how-to/troubleshooting.md) |
+| Changelog | [../process/release-notes.md](../process/release-notes.md) |
+| Test guide | [../process/test-guide.md](../process/test-guide.md) |
+| Delivery milestones | [../operations/roadmap.md](../operations/roadmap.md) |
