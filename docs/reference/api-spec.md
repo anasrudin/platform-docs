@@ -4,39 +4,44 @@
 |---|---|
 | Status | Active |
 | Audience | Contributors, integrators, reviewers |
-| Scope | Current local HTTP API surface exposed by `platform-api` |
-| Last updated | March 11, 2026 |
+| Scope | Full HTTP API surface exposed by `platform-api` |
+| Last updated | April 8, 2026 |
 
 ## Executive summary
 
-The current API surface is intentionally small. It exposes endpoints for health checks, session creation, tool execution, and artifact upload or download. The current implementation is a local MVP API, not a finalized public contract.
+The platform exposes an HTTP API for session management, tool execution, artifact storage, and package management. This is a local MVP API. Authentication and versioning are not yet implemented.
 
 ## Base URL and conventions
 
 | Item | Value |
 |---|---|
 | Local base URL | `http://localhost:8080` |
-| Content type | `application/json` |
-| Authentication | Not implemented in the current local API |
+| Content type | `application/json` (except artifact upload which uses `multipart/form-data`) |
+| Authentication | Not implemented |
 | Version string | Returned by `GET /health` as `0.1.0-local` |
 
 ## API surface
 
 | Method | Path | Purpose |
 |---|---|---|
-| `GET` | `/health` | Returns service health for the API dependencies |
-| `POST` | `/sessions` | Creates an execution session for a runtime tier |
-| `POST` | `/execute` | Executes a tool, optionally creating a session automatically |
-| `POST` | `/artifacts` | Uploads an artifact to the artifact store |
-| `GET` | `/artifacts/{key}` | Downloads an artifact by object key |
+| `GET` | `/health` | Service health and dependency status |
+| `POST` | `/sessions` | Create an execution session |
+| `POST` | `/execute` | Execute a tool in a session |
+| `POST` | `/artifacts` | Upload an artifact |
+| `GET` | `/artifacts/{artifact_id}/{name}` | Download an artifact |
+| `POST` | `/packages/install` | Install and cache a pip package |
+| `GET` | `/packages` | List all cached packages |
+| `DELETE` | `/packages/{name}` | Remove a cached package |
+
+---
 
 ## `GET /health`
 
-Returns the health status of the local API and its backing services.
+Returns the health status of the API and its backing services.
 
 ### Success response
 
-`200 OK` when all dependencies are healthy.
+`200 OK` — all dependencies healthy.
 
 ```json
 {
@@ -51,7 +56,7 @@ Returns the health status of the local API and its backing services.
 
 ### Degraded response
 
-`503 Service Unavailable` when one or more dependencies are unhealthy.
+`503 Service Unavailable` — one or more dependencies unhealthy.
 
 ```json
 {
@@ -64,31 +69,29 @@ Returns the health status of the local API and its backing services.
 }
 ```
 
+---
+
 ## `POST /sessions`
 
-Creates a new session. If no runtime is provided, the API defaults to `wasm`.
+Creates a new execution session for a runtime tier.
 
 ### Request body
 
 | Field | Type | Required | Notes |
 |---|---|---|---|
-| `runtime` | string | No | Allowed values in current code are `wasm`, `microvm`, `gui` |
+| `runtime` | string | No | `wasm`, `microvm`, or `gui`. Defaults to `wasm`. |
 
-### Example request
+### Example
 
 ```json
-{
-  "runtime": "microvm"
-}
+{ "runtime": "microvm" }
 ```
 
-### Success response
-
-`200 OK`
+### Response `200 OK`
 
 ```json
 {
-  "session_id": "sess_123",
+  "session_id": "sess_abc123",
   "runtime": "microvm",
   "status": "active"
 }
@@ -99,68 +102,64 @@ Creates a new session. If no runtime is provided, the API defaults to `wasm`.
 | Status | Condition |
 |---|---|
 | `400` | Invalid JSON body |
-| `405` | Method other than `POST` |
 | `500` | Session creation or schema initialization failure |
+
+---
 
 ## `POST /execute`
 
-Creates a job, routes it to the runtime selected for the tool, waits for the result, then returns the execution outcome.
+Submits a tool execution request. Waits up to 30 seconds for a result.
 
-If `session_id` is omitted, the API auto-creates a session based on runtime resolution for the requested tool.
+If `session_id` is omitted, the API auto-creates a session based on the tool's routing rule.
 
 ### Request body
 
 | Field | Type | Required | Notes |
 |---|---|---|---|
-| `session_id` | string | No | If omitted, the API creates a session automatically |
-| `tool` | string | Yes | Used for routing and queue selection |
-| `input` | object | No | Arbitrary JSON object passed to the runtime |
+| `session_id` | string | No | Omit to create automatically |
+| `tool` | string | Yes | Determines runtime routing |
+| `input` | object | No | Arbitrary JSON forwarded to the runtime |
 
-### Example request with explicit session
+### Example with explicit session
 
 ```json
 {
-  "session_id": "sess_123",
+  "session_id": "sess_abc123",
   "tool": "python_run",
-  "input": {
-    "code": "print(\"hello\")"
-  }
+  "input": { "code": "print('hello')" }
 }
 ```
 
-### Example request with automatic session creation
+### Example with automatic session
 
 ```json
 {
   "tool": "browser_open",
-  "input": {
-    "url": "https://example.com"
-  }
+  "input": { "url": "https://example.com" }
 }
 ```
 
-### Success response
-
-`200 OK`
+### Response `200 OK` — completed
 
 ```json
 {
-  "job_id": "job_123",
+  "job_id": "job_xyz789",
   "status": "completed",
-  "output": "Hello from Firecracker on Nomad!\n",
-  "duration_ms": 312
+  "output": "hello\n",
+  "error_message": null,
+  "duration_ms": 42
 }
 ```
 
-### Failed execution response
+### Response `200 OK` — failed execution
 
-The endpoint still returns `200 OK` when the request is valid but the runtime execution fails. The failure is represented in the response body.
+The endpoint returns `200` even when the runtime fails. Failure is in the body.
 
 ```json
 {
-  "job_id": "job_123",
+  "job_id": "job_xyz789",
   "status": "failed",
-  "error_message": "wait result: context deadline exceeded",
+  "error_message": "context deadline exceeded",
   "duration_ms": 30000
 }
 ```
@@ -170,14 +169,15 @@ The endpoint still returns `200 OK` when the request is valid but the runtime ex
 | Status | Condition |
 |---|---|
 | `400` | Invalid JSON body |
-| `400` | Missing `tool` |
-| `404` | `session_id` was provided but no matching session exists |
-| `405` | Method other than `POST` |
-| `500` | Session creation or job persistence failure |
+| `400` | Missing `tool` field |
+| `404` | `session_id` provided but no matching session exists |
+| `500` | Job creation or queue failure |
+
+---
 
 ## `POST /artifacts`
 
-Uploads an artifact through multipart form data.
+Uploads a file to the artifact store.
 
 ### Request format
 
@@ -187,13 +187,11 @@ Uploads an artifact through multipart form data.
 
 | Field | Type | Required | Notes |
 |---|---|---|---|
+| `file` | binary | Yes | The file to upload |
 | `session_id` | string | No | Optional session association |
-| `name` | string | No | Defaults to `artifact` or the uploaded filename |
-| `file` | binary | Yes | Multipart file field |
+| `name` | string | No | Defaults to the filename or `artifact` |
 
-### Example response
-
-`200 OK`
+### Response `200 OK`
 
 ```json
 {
@@ -208,81 +206,156 @@ Uploads an artifact through multipart form data.
 
 | Status | Condition |
 |---|---|
-| `400` | Invalid multipart body |
-| `400` | Missing file field |
-| `405` | Method other than `POST` |
-| `500` | Artifact upload failure |
+| `400` | Missing file field or invalid multipart body |
+| `500` | Upload failure |
 
-## `GET /artifacts/{key}`
+---
 
-Downloads an artifact by key from the configured artifact bucket.
+## `GET /artifacts/{artifact_id}/{name}`
 
-### Behavior
+Downloads an artifact by ID and filename.
 
-- the current implementation treats everything after `/artifacts/` as the object key
-- keys may contain nested path segments
-- response content type is currently `application/octet-stream`
+### Path parameters
+
+| Parameter | Description |
+|---|---|
+| `artifact_id` | UUID returned by `POST /artifacts` |
+| `name` | Filename returned by `POST /artifacts` |
+
+### Response
+
+`200 OK` — body is the raw file bytes. Content-Type: `application/octet-stream`.
 
 ### Error cases
 
 | Status | Condition |
 |---|---|
-| `400` | Missing artifact key |
-| `405` | Method other than `GET` |
-| `500` | Download failure while streaming the object |
+| `404` | Artifact not found or download failure |
 
-## Runtime resolution behavior
+---
 
-The current router resolves tools to runtime tiers through in-process routing rules.
+## `POST /packages/install`
 
-| Behavior | Current implementation |
+Downloads a pip wheel, caches it in MinIO (or a local directory in dev mode), and returns metadata.
+
+### Request body
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `package_name` | string | Yes | PyPI package name |
+| `version` | string | No | e.g. `"1.26.0"`. Omit for latest. |
+| `session_id` | string | No | Session to associate the install with |
+| `proxy_url` | string | No | HTTP proxy for pip. Passed as `--proxy`. |
+| `timeout_seconds` | integer | No | Default: 60 |
+| `extra_dependencies` | array of strings | No | Additional packages to include |
+
+### Example
+
+```json
+{
+  "session_id": "sess_abc123",
+  "package_name": "numpy",
+  "version": "1.26.0"
+}
+```
+
+### Response `200 OK`
+
+```json
+{
+  "name": "numpy",
+  "version": "1.26.0",
+  "key": "numpy/1.26.0",
+  "status": "installed"
+}
+```
+
+`status` is `"cached"` when the wheel already exists for that package/version.
+
+### Error cases
+
+| Status | Condition |
 |---|---|
-| Known tool | Uses the configured runtime rule |
+| `500` | pip download failed or MinIO write error |
+
+---
+
+## `GET /packages`
+
+Lists all cached packages.
+
+### Response `200 OK`
+
+```json
+{
+  "packages": [
+    { "name": "numpy", "version": "1.26.0", "key": "numpy/1.26.0", "status": "installed" }
+  ],
+  "count": 1
+}
+```
+
+---
+
+## `DELETE /packages/{name}`
+
+Removes a specific package version from the cache.
+
+### Query parameters
+
+| Parameter | Type | Notes |
+|---|---|---|
+| `version` | string | Version to delete. Omit to target `latest`. |
+
+### Example
+
+```bash
+DELETE /packages/numpy?version=1.26.0
+```
+
+### Response `200 OK`
+
+```json
+{ "deleted": "numpy", "version": "1.26.0" }
+```
+
+### Error cases
+
+| Status | Condition |
+|---|---|
+| `500` | Delete failure |
+
+---
+
+## Runtime routing behavior
+
+| Behavior | Details |
+|---|---|
+| Known tool | Routed to the configured runtime tier via `router/rules.py` |
 | Unknown tool | Defaults to `wasm` |
-| Queueing | Pushes the job to Redis-backed queues |
-| Result wait | Blocks for up to 30 seconds waiting for the runtime result |
+| Queue | Jobs are pushed to Redis-backed queues per tier |
+| Result wait | Blocks up to 30 seconds for the runtime result |
 
-## Example usage
+---
 
-### Health check
+## Agent health endpoints
 
-```bash
-curl -s http://localhost:8080/health | jq
-```
+Each runtime agent exposes its own `/health` endpoint on a separate port:
 
-### Create a session
+| Agent | Default port | Response |
+|---|---|---|
+| `fc-agent` | `8081` | `{"status": "ok", "runtime": "firecracker", "pool_size": N}` |
+| `wasm-agent` | `8082` | `{"status": "ok", "runtime": "wasm", "pool_size": N}` |
+| `gui-agent` | `8083` | `{"status": "ok", "runtime": "gui", "pool_size": 0}` |
 
-```bash
-curl -s -X POST http://localhost:8080/sessions \
-  -H "Content-Type: application/json" \
-  -d '{"runtime":"microvm"}' | jq
-```
+These are used by HAProxy and Consul for health checking. They are not part of the main API surface.
 
-### Execute a tool
+---
 
-```bash
-curl -s -X POST http://localhost:8080/execute \
-  -H "Content-Type: application/json" \
-  -d '{
-    "tool": "browser_open",
-    "input": {
-      "url": "https://example.com"
-    }
-  }' | jq
-```
+## Notes and current limitations
 
-### Upload an artifact
-
-```bash
-curl -s -X POST http://localhost:8080/artifacts \
-  -F "session_id=sess_123" \
-  -F "name=output.txt" \
-  -F "file=@./output.txt" | jq
-```
-
-## Notes and limitations
-
-- The API is currently local-first and not versioned under `/v1`.
-- Authentication and authorization are not yet implemented.
-- The tool registry is still evolving; routing behavior will become more metadata-driven over time.
-- This specification documents the current code behavior, not a final external API contract.
+- The API is not versioned under `/v1`. This will change before the first external release.
+- Authentication and authorization are not implemented.
+- `PUT /packages/{name}` (update package) and `GET /packages/{name}` (single package info) are not yet implemented.
+- Package install does not execute inside a Firecracker VM session; wheels are cached on the host only.
+- Tool routing rules are in-process; a dedicated tool registry API is planned.

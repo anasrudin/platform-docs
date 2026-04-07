@@ -4,125 +4,234 @@
 |---|---|
 | Status | Active |
 | Audience | Contributors, reviewers, operators |
-| Scope | Main system diagram, components, and end-to-end request lifecycle |
-| Last updated | March 11, 2026 |
+| Scope | System diagram, components, data flows, and advanced infrastructure |
+| Last updated | April 8, 2026 |
 
 ## Executive summary
 
-The platform separates business logic from workload placement. The control plane owns routing, policy, session lifecycle, and artifact coordination. Nomad places work onto runtime-specific host agents, which execute tools through WASM, Firecracker, or GUI environments.
+The platform separates business logic from workload placement. The control plane owns routing, policy, session lifecycle, and artifact coordination. Nomad places work onto runtime-specific agents, which execute tools through WASM, Firecracker, or GUI environments. Consul provides service discovery and distributed session state. HAProxy load balances across runtime agents. An auto-scaler adjusts node counts based on pool utilization.
+
+---
 
 ## Main system diagram
 
 ```mermaid
 flowchart TD
-    A[Agent or User] --> B[API Gateway]
-    B --> C[Control Plane]
+    A[Agent or User] --> B[HAProxy]
+    B --> C[platform-api\nFastAPI]
 
-    C --> D[Tool Registry]
-    C --> E[Runtime Router]
-    C --> F[Session Manager]
-    C --> G[Artifact Coordination]
+    C --> D[Runtime Router]
+    C --> F[Session Manager\nPostgreSQL]
+    C --> G[Artifact Store\nMinIO]
+    C --> PKG[Package Store\nMinIO]
 
-    E --> H[Nomad Scheduler]
+    D --> Q[(Redis Queues)]
 
-    H --> I[WASM Host Agents]
-    H --> J[Firecracker Host Agents]
-    H --> K[GUI Host Agents]
+    Q --> I[wasm-agent]
+    Q --> J[fc-agent]
+    Q --> K[gui-agent]
 
-    I --> L[Wasmtime Execution]
-    J --> M[Snapshot Restore and microVM Execution]
-    K --> N[Chromium and Playwright Execution]
+    I --> L[Wasmtime]
+    J --> M[Firecracker VM Pool\nSnapshot restore]
+    K --> N[Chromium + Playwright]
 
-    C --> O[(PostgreSQL)]
-    C --> P[(Redis or NATS)]
-    C --> Q[(MinIO)]
+    J --> Q2[(MinIO\nsnapshots)]
+    I --> Q3[(MinIO\nmodules)]
 
-    J --> Q
-    I --> Q
-    K --> Q
+    C <--> KV[Consul KV\nSession mappings]
+    I <--> CS[Consul\nService registry]
+    J <--> CS
+    K <--> CS
+
+    B <--> CS
+
+    SC[Auto-scaler] --> NM[Nomad API]
+    SC --> CS
+
+    C -.->|MTLS_ENABLED| MW[MTLSMiddleware\n403 if no cert]
 ```
 
-## Primary components
+---
 
-| Component | Responsibility |
-|---|---|
-| API gateway | External request entry point, authentication boundary, and request handling |
-| Control plane | Routing, policy, session lifecycle, tool selection, artifact coordination |
-| Tool registry | Tool discovery, metadata, health state, and runtime fit |
-| Runtime router | Chooses the correct runtime tier for a request |
-| Nomad | Placement, scheduling, and lifecycle orchestration |
-| WASM host agents | Execute small bounded workloads via Wasmtime |
-| Firecracker host agents | Launch and manage secure microVM-based execution |
-| GUI host agents | Run browser automation and visual workflows |
-| PostgreSQL | Session and execution metadata |
-| Redis or NATS | Queueing and coordination |
-| MinIO | Artifact, module, and snapshot storage |
+## Components
+
+| Component | Language / Tech | Responsibility |
+|---|---|---|
+| `platform-api` | Python / FastAPI | Main HTTP API: sessions, execute, artifacts, packages |
+| `fc-agent` | Python | Firecracker runtime worker; pops from `microvm` queue |
+| `wasm-agent` | Python | WASM runtime worker; pops from `wasm` queue |
+| `gui-agent` | Python | GUI runtime worker; pops from `gui` queue |
+| HAProxy | HAProxy | Load balancer; backends populated from Consul |
+| Consul | HashiCorp Consul | Service registry, health checks, session KV store |
+| Nomad | HashiCorp Nomad | Job scheduling and placement |
+| Auto-scaler | Python asyncio task | Reads pool metrics; calls Nomad scaling API |
+| PostgreSQL | psycopg2 | Session and job metadata |
+| Redis | redis-py | Job queues per runtime tier |
+| MinIO | minio SDK | Artifacts, WASM modules, Firecracker snapshots, package wheels |
+
+---
 
 ## End-to-end request lifecycle
 
-### Sequence diagram
-
 ```mermaid
 sequenceDiagram
-    participant U as User or Agent
-    participant A as API Gateway
-    participant C as Control Plane
-    participant T as Tool Registry
+    participant U as User / Agent
+    participant LB as HAProxy
+    participant API as platform-api
     participant R as Runtime Router
-    participant N as Nomad
-    participant H as Runtime Host Agent
-    participant S as Shared Services
+    participant Q as Redis Queue
+    participant AG as Runtime Agent
+    participant CS as Consul KV
 
-    U->>A: Submit execution request
-    A->>C: Forward validated request
-    C->>T: Resolve tool metadata
-    T-->>C: Return tool capabilities
-    C->>R: Select runtime tier
-    R-->>C: Return runtime decision
-    C->>S: Create or update session and job metadata
-    C->>N: Submit work for placement
-    N->>H: Dispatch allocation
-    H->>S: Fetch metadata or artifacts
-    H-->>C: Return execution result
-    C->>S: Persist results and artifacts
-    C-->>A: Build API response
-    A-->>U: Return execution result
+    U->>LB: POST /execute
+    LB->>API: forward (health-checked backend)
+    API->>R: resolve tool → tier
+    API->>Q: push job to tier queue
+    AG->>Q: pop job
+    AG->>AG: execute (Firecracker / WASM / GUI)
+    AG->>Q: publish result
+    API->>API: wait result (≤ 30s)
+    API->>CS: store session mapping (if CONSUL_ENABLED)
+    API-->>U: return execution result
 ```
 
-1. A user or upstream agent submits a request to the API gateway.
-2. The control plane authenticates the request and creates or resolves a session.
-3. The tool registry and runtime router determine the correct tool and runtime tier.
-4. The request is placed onto the appropriate queue and scheduled through Nomad.
-5. A runtime host agent receives the work and prepares the execution environment.
-6. The selected runtime executes the tool.
-7. Results, logs, and artifacts are persisted outside the sandbox lifecycle.
-8. The control plane returns the execution result to the caller.
+1. HAProxy receives the request and forwards to a healthy `platform-api` instance.
+2. The runtime router maps the tool name to a runtime tier (WASM, Firecracker, or GUI).
+3. A job is pushed to the matching Redis queue.
+4. The runtime agent pops the job and executes it.
+5. The result is published back to Redis; `platform-api` returns it to the caller.
+6. If Consul is enabled, the session-to-VM mapping is stored in Consul KV.
 
-## Deployment model
+---
 
-The current MVP deployment model assumes three nodes:
+## Service discovery and load balancing
 
-| Node | Role | Current responsibilities |
+HAProxy is the external entry point. Backends are populated dynamically from Consul's service catalog using `consul-template`. When an agent registers or deregisters, `consul-template` re-renders `haproxy.cfg` and reloads HAProxy with zero connection drops.
+
+```
+Consul service catalog
+    ↓ consul-template watches
+haproxy.cfg (re-rendered)
+    ↓ haproxy graceful reload
+HAProxy backend pool updated
+```
+
+Configuration files:
+
+| File | Purpose |
+|---|---|
+| `infra/haproxy/haproxy.cfg.j2` | Jinja2 template for static deployments |
+| `infra/haproxy/haproxy.cfg.ctmpl` | Go template for consul-template dynamic reload |
+| `infra/haproxy/consul-template.hcl` | consul-template config with HAProxy reload command |
+
+---
+
+## Session state distribution
+
+Session-to-VM mappings are stored in Consul KV at `sandbox/sessions/{session_id}`. This makes routing stateless: any `platform-api` instance can look up which VM owns a session without affinity to a specific node.
+
+```
+Key:   sandbox/sessions/{session_id}
+Value: {
+  "vm_id": "abc123",
+  "node_id": "node-xyz",
+  "agent_address": "10.0.1.5:8080",
+  "created_at": "...",
+  "expires_at": "..."
+}
+```
+
+Sessions auto-expire via Consul TTL. Agent crashes do not leave orphaned session entries.
+
+---
+
+## Auto-scaling
+
+The scaler runs as a background `asyncio` task inside `platform-api`. Each tick (default: 60 seconds):
+
+1. Collect pool utilization metrics from all runtime nodes.
+2. Evaluate the scaling policy.
+3. Call the Nomad job scaling API if utilization is above or below thresholds.
+
+Cooldown periods prevent thrashing:
+
+| Event | Cooldown |
+|---|---|
+| Scale up | 5 minutes |
+| Scale down | 10 minutes |
+
+The scaler respects `SCALER_MIN_NODES` and `SCALER_MAX_NODES` hard limits. Nomad's migrate stanza drains existing allocations before reducing the count.
+
+---
+
+## Network addressing (Firecracker)
+
+Each Firecracker VM gets a unique TAP device and MAC address to prevent collisions in multi-node deployments.
+
+| Item | Format | Example |
 |---|---|---|
-| `node1` | Control node | API gateway, control plane, tool registry, PostgreSQL, Redis, MinIO, Nomad server |
-| `node2` | Runtime node | WASM execution and Firecracker execution |
-| `node3` | Runtime node | Firecracker execution and GUI execution |
+| TAP device | `tap-{node_short}-{vm_short}` | `tap-n1a2-v8f3` |
+| MAC address | `06:00:{node[0]:02X}:{node[1]:02X}:{vm[0]:02X}:{vm[1]:02X}` | `06:00:AC:10:00:01` |
 
-Day-to-day engineering still validates this architecture primarily through a local sandbox before full production hardening.
+Both are deterministically derived from node ID and VM ID using SHA-256, so no central registry is needed.
+
+---
+
+## Security: mTLS
+
+When `MTLS_ENABLED=true`, the platform enforces mutual TLS on all inbound requests to `platform-api`. `MTLSMiddleware` returns HTTP 403 if the client certificate is absent.
+
+| Property | Value |
+|---|---|
+| TLS minimum version | 1.3 |
+| Key type | ECDSA P-256 |
+| Cert validity | 1 year, rotated every 30 days |
+| CA | Internal root CA, self-managed |
+| Cert storage | `/etc/sandbox/certs/` |
+
+`CertManager.reload()` hot-swaps the certificate chain on the live `ssl.SSLContext` without dropping in-flight connections.
+
+---
+
+## Deployment topology
+
+| Node | Role | Services |
+|---|---|---|
+| `node1` | Control node | platform-api, HAProxy, Consul server, Nomad server, PostgreSQL, Redis, MinIO |
+| `node2` | Runtime node | fc-agent, wasm-agent, Nomad client, Consul client |
+| `node3` | Runtime node | fc-agent, gui-agent, Nomad client, Consul client |
+
+For local development, all services run on a single machine with simulation fallbacks for Firecracker (no KVM required on macOS).
+
+---
+
+## Feature flags
+
+All advanced features are off by default. Safe to run locally without Consul, Nomad, or mTLS infrastructure.
+
+| Feature | Env var | Default |
+|---|---|---|
+| Consul registration + session KV | `CONSUL_ENABLED` | `false` |
+| Background auto-scaler | `SCALER_ENABLED` | `false` |
+| mTLS enforcement | `MTLS_ENABLED` | `false` |
+
+---
 
 ## Architectural constraints
 
-- business logic stays in the control plane
-- Nomad is used for placement, not platform-specific workflow logic
-- runtime isolation differs by execution tier
-- execution artifacts must survive beyond sandbox teardown
-- network and filesystem isolation are required for secure runtime maturity
+- Business logic stays in `platform-api`. Runtime agents are dumb workers.
+- Nomad is a placement layer only — no application-specific workflow logic.
+- Execution artifacts must survive beyond sandbox teardown.
+- Each runtime tier is isolated by dedicated queues and agent processes.
+- Network and filesystem isolation are enforced at the Firecracker VM boundary.
+
+---
 
 ## Related documents
 
 - [../overview/platform-overview.md](../overview/platform-overview.md)
 - [../reference/runtime-reference.md](../reference/runtime-reference.md)
-- [../reference/tools-reference.md](../reference/tools-reference.md)
 - [../reference/api-spec.md](../reference/api-spec.md)
+- [../how-to/run-locally.md](../how-to/run-locally.md)
 - [../how-to/deploy.md](../how-to/deploy.md)
 - [../operations/roadmap.md](../operations/roadmap.md)
