@@ -1,9 +1,19 @@
 """GUI agent — pops jobs from the gui queue and executes them.
 
 Mirrors cmd/gui-agent/main.go.
+
+Environment variables:
+  REDIS_URL          — Redis connection URL (default: redis://localhost:6379/0)
+  GUI_HEALTH_PORT    — Port for the /health HTTP endpoint (default: 8083)
+  SERVICE_ADDRESS    — Address advertised to Consul (default: 127.0.0.1)
+  CONSUL_HOST        — Consul agent host (default: 127.0.0.1)
+  CONSUL_PORT        — Consul agent HTTP port (default: 8500)
+  CONSUL_TOKEN       — Consul ACL token (default: empty)
+  CONSUL_ENABLED     — Set to "true" to register with Consul (default: false)
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import signal
@@ -11,6 +21,8 @@ import time
 
 import structlog
 
+from sandbox_platform.consul.client import ConsulClient
+from sandbox_platform.consul.health_server import start_health_server
 from sandbox_platform.queue.client import Client as QueueClient
 from sandbox_platform.queue.client import new_redis_client
 from sandbox_platform.runtime.gui.runtime import Runtime
@@ -31,13 +43,41 @@ def _env_or(key: str, default: str) -> str:
 
 def main() -> None:
     redis_url = _env_or("REDIS_URL", "redis://localhost:6379/0")
+    health_port = int(_env_or("GUI_HEALTH_PORT", "8083"))
+    service_address = _env_or("SERVICE_ADDRESS", "127.0.0.1")
+    consul_enabled = os.environ.get("CONSUL_ENABLED") == "true"
+
     rdb = new_redis_client(redis_url)
     rdb.ping()
 
     qc = QueueClient(rdb)
     engine = Runtime()
 
-    log.info("Starting gui-agent", tier=engine.tier().value)
+    service_id = f"gui-agent-{service_address}-{health_port}"
+
+    # Start /health endpoint in a background daemon thread
+    start_health_server(
+        port=health_port,
+        runtime_name=engine.name(),
+        pool_size_fn=lambda: 0,
+    )
+
+    # Register with Consul if enabled
+    consul = ConsulClient()
+    if consul_enabled:
+        asyncio.run(
+            consul.register_service(
+                name="gui-agent",
+                service_id=service_id,
+                address=service_address,
+                port=health_port,
+                health_url=f"http://{service_address}:{health_port}/health",
+                tags=["sandbox", "gui"],
+            )
+        )
+
+    log.info("Starting gui-agent", tier=engine.tier().value,
+             health_port=health_port, consul_enabled=consul_enabled)
 
     stop = False
 
@@ -45,6 +85,11 @@ def main() -> None:
         nonlocal stop
         stop = True
         log.info("Shutting down gui-agent")
+        if consul_enabled:
+            try:
+                asyncio.run(consul.deregister_service(service_id))
+            except Exception as exc:
+                log.error("consul deregister failed", err=str(exc))
 
     signal.signal(signal.SIGINT, _handle_signal)
     signal.signal(signal.SIGTERM, _handle_signal)

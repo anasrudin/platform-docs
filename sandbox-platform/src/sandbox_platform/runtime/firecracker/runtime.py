@@ -8,6 +8,7 @@ Mode selection:
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import threading
@@ -21,6 +22,43 @@ from sandbox_platform.runtime.firecracker.snapshot import SnapshotStore
 from sandbox_platform.types import Job, RuntimeResult, Tier
 
 log = structlog.get_logger()
+
+
+# ── TAP / MAC helpers ──────────────────────────────────────────────────────────
+
+def make_tap_name(node_id: str, vm_id: str) -> str:
+    """Return a Linux TAP device name for a given node and VM.
+
+    Format: ``tap-{node_id[:4]}-{vm_id[:4]}`` (max 15 characters, always lowercase).
+    Linux imposes a 15-character limit on interface names (IFNAMSIZ − 1).
+
+    Example::
+
+        make_tap_name("node-abc123", "vm-xyz789")
+        # → "tap-node-vm-x"
+    """
+    n = node_id[:4].lower()
+    v = vm_id[:4].lower()
+    return f"tap-{n}-{v}"
+
+
+def make_mac_address(node_id: str, vm_id: str) -> str:
+    """Return a deterministic locally-administered unicast MAC address.
+
+    Format: ``06:00:<node_byte0>:<node_byte1>:<vm_byte0>:<vm_byte1>``
+
+    ``06`` sets the locally-administered (bit 1) and unicast (bit 0 = 0) flags.
+    The remaining 4 octets are the first 2 bytes of ``sha256(node_id)`` and
+    ``sha256(vm_id)``, giving a collision-free deterministic assignment.
+
+    Example::
+
+        make_mac_address("node-1", "vm-1")
+        # → "06:00:XX:XX:YY:YY"
+    """
+    nh = hashlib.sha256(node_id.encode()).digest()
+    vh = hashlib.sha256(vm_id.encode()).digest()
+    return f"06:00:{nh[0]:02X}:{nh[1]:02X}:{vh[0]:02X}:{vh[1]:02X}"
 
 
 def _env_or(key: str, default: str) -> str:
@@ -96,6 +134,9 @@ class Runtime:
         except Exception as exc:
             log.error("VM pool warmup failed, falling back to sim mode", err=str(exc))
             self._mode = "sim"
+
+    def pool_size(self) -> int:
+        return self._cfg.pool_size
 
     def name(self) -> str:
         return f"firecracker-{self._mode}"
