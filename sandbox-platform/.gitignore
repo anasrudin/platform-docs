@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Testing & coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+
+# Runtime artifacts
+bin/*
+!bin/.gitkeep
+*.pid
+*.log
+*.sock
+*.fifo
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Editor & OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Nomad / Firecracker state
+bin/nomad-*/
+/var/sandbox/
+
+# MinIO local data
+minio-data/
