@@ -98,6 +98,49 @@
 
 ---
 
+## Decision 008 — Migrasi Bahasa: Go → Python
+
+**Date:** 2026-04-07
+**Status:** Accepted
+
+**Context:** Seluruh codebase platform ditulis dalam Go. Tim memutuskan untuk beralih ke Python.
+
+**Decision:** Migrasikan semua kode Go di `sandbox-platform/` ke Python 3.12+. Stack baru: FastAPI (HTTP), psycopg2 (PostgreSQL), redis-py (Redis), minio SDK (MinIO), structlog (logging).
+
+**Rationale:**
+- Ekosistem Python lebih kaya untuk AI/ML tooling yang akan digunakan di atas platform
+- Lebih mudah onboarding developer baru
+- Pydantic v2 memberikan type safety yang cukup tanpa kompleksitas tipe Go
+- FastAPI + uvicorn performa mendekati Go untuk workload ini
+
+**Consequences:**
+- Semua file `.go` akan dihapus setelah test Python hijau
+- `go.mod`/`go.sum` diganti `pyproject.toml`
+- Binary Go (`bin/platform-api`, `bin/fc-agent`, dll) diganti entrypoint Python
+- Panduan migrasi lengkap ada di `docs/migration/go-to-python.md`
+
+---
+
+## Decision 009 — Spec-Driven Development
+
+**Date:** 2026-04-07
+**Status:** Accepted
+
+**Context:** Fitur-fitur lanjutan (Consul, HAProxy, autoscaling, mTLS, dll) perlu dikembangkan secara terstruktur.
+
+**Decision:** Gunakan pendekatan Spec-Driven Development: setiap fitur wajib punya spec lengkap (current state, target behavior, acceptance criteria) sebelum ada baris kode ditulis. Spec disimpan di `docs/todo/todo-list.md`.
+
+**Rationale:**
+- Mencegah scope creep dan over-engineering
+- Acceptance criteria menjadi definisi "selesai" yang jelas
+- Rollout bertahap: Consul dulu (prereq semua fitur), lalu HAProxy + session KV, lalu autoscaling, lalu mTLS terakhir
+
+**Consequences:**
+- Setiap PR baru harus merujuk ke spec yang sudah ada
+- Spec harus diupdate jika ada perubahan desain
+
+---
+
 ## Decision 006 — Two Repository Strategy
 
 **Date:** 2026-03-11  

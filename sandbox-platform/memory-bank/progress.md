@@ -1,75 +1,72 @@
 # Progress
 
-> Last updated: 2026-03-11
+> Last updated: 2026-04-07
 
-## Platform Capabilities
+## Week 1 — Go Implementation (✅ Selesai)
 
-### Documentation (✅ Complete)
+| Hari | Status | Deliverable |
+|------|--------|-------------|
+| 1–2  | ✅ | Nomad cluster + PG + Redis + MinIO infra scripts |
+| 3    | ✅ | Firecracker install + KVM setup + test-firecracker.sh |
+| 4    | ✅ | `tools/snapshot-builder/` — rootfs + snapshot + MinIO upload |
+| 5    | ✅ | Real Firecracker runtime (pool + vsock + snapshot restore) |
+| 6    | ✅ | Real WASM runtime (Wasmtime CLI + MinIO module cache) |
+| 7    | ✅ | Artifact upload/download (POST /artifacts, GET /artifacts/{key}) |
 
-| Document | Status |
-|---|---|
-| Architecture (28 sections) | ✅ |
-| Folder tree + structure | ✅ |
-| Coding agent prompt (10 tasks) | ✅ |
-| Tools structure + manifest format | ✅ |
-| 3-week build roadmap | ✅ |
-| Memory Bank system | ✅ |
+## Fase Saat Ini — Migrasi Go → Python (🔄 In Progress)
 
-### Infrastructure (🔲 Not Started)
+| Komponen | Status |
+|----------|--------|
+| Panduan migrasi (`docs/migration/go-to-python.md`) | ✅ |
+| Spec fitur lanjutan (`docs/todo/todo-list.md`) | ✅ |
+| Setup Python project (`pyproject.toml`, venv) | 📋 Belum |
+| `sandbox_platform/types.py` | 📋 Belum |
+| `sandbox_platform/queue/client.py` | 📋 Belum |
+| `sandbox_platform/session/manager.py` | 📋 Belum |
+| `sandbox_platform/router/` | 📋 Belum |
+| `sandbox_platform/artifacts/store.py` | 📋 Belum |
+| `sandbox_platform/runtime/firecracker/` | 📋 Belum |
+| `sandbox_platform/runtime/wasm/` | 📋 Belum |
+| `sandbox_platform/runtime/gui/` | 📋 Belum |
+| `cmd/platform_api.py` (FastAPI) | 📋 Belum |
+| `cmd/fc_agent.py` | 📋 Belum |
+| `cmd/wasm_agent.py` | 📋 Belum |
+| Hapus file Go | 📋 Belum (menunggu test hijau) |
 
-| Component | Status |
-|---|---|
-| Nomad cluster (3 nodes) | 🔲 |
-| PostgreSQL | 🔲 |
-| Redis | 🔲 |
-| MinIO | 🔲 |
+## Fitur Lanjutan (Spec Selesai, Belum Diimplementasi)
 
-### Runtime Engines (🔲 Not Started)
+| Fitur | Spec | Implementasi |
+|-------|------|-------------|
+| Consul service discovery | ✅ | 📋 |
+| HAProxy load balancing | ✅ | 📋 |
+| Auto-scaling | ✅ | 📋 |
+| Package management API | ✅ | 📋 |
+| TAP device naming | ✅ | 📋 |
+| MAC address generation | ✅ | 📋 |
+| mTLS | ✅ | 📋 |
+| Session mapping Consul KV | ✅ | 📋 |
 
-| Engine | Status |
-|---|---|
-| WASM runtime (Wasmtime) | 🔲 |
-| Firecracker runtime | 🔲 |
-| GUI runtime (Chromium) | 🔲 |
-| Snapshot builder | 🔲 |
-| Warm pool manager | 🔲 |
+## Infrastructure
 
-### Control Plane (🔲 Not Started)
+| Komponen | Status |
+|----------|--------|
+| Nomad cluster (3 nodes) | ✅ Scripts tersedia |
+| PostgreSQL | ✅ Docker Compose tersedia |
+| Redis | ✅ Docker Compose tersedia |
+| MinIO | ✅ Docker Compose tersedia |
 
-| Service | Status |
-|---|---|
-| API Gateway | 🔲 |
-| Session Manager | 🔲 |
-| Runtime Router | 🔲 |
-| Policy Engine | 🔲 |
-| Billing / Quota | 🔲 |
-| Janitor / Reaper | 🔲 |
-| Audit Service | 🔲 |
-| Tool Registry | 🔲 |
+## Yang Bisa Dijalankan Sekarang
 
-### Isolation (🔲 Not Started)
+```bash
+# Test snapshot builder (tanpa KVM)
+bash tools/snapshot-builder/test/test-snapshot-builder.sh
 
-| Feature | Status |
-|---|---|
-| Network isolation (TAP) | 🔲 |
-| Filesystem overlay | 🔲 |
-| DNS resolver | 🔲 |
-| seccomp profiles | 🔲 |
+# Test fc pipeline (unit mode)
+bash sandbox-platform/scripts/test-fc-pipeline.sh --unit
 
-### Tools (🔲 Not Started)
+# Build semua binary Go (sebelum migrasi selesai)
+cd sandbox-platform && go build ./...
 
-| Category | Count | Status |
-|---|---|---|
-| WASM tools | 11 planned | 🔲 |
-| Firecracker tools | 10 planned | 🔲 |
-| GUI tools | 6 planned | 🔲 |
-
-## What Works Today
-
-- Full architecture documentation
-- Memory Bank for multi-agent collaboration
-- Build roadmap with day-by-day instructions
-
-## What's Next
-
-Week 1: Runtime foundation (Nomad + Firecracker + WASM + MinIO)
+# Jalankan dev environment (Go, sebelum migrasi)
+cd sandbox-platform && make dev
+```
