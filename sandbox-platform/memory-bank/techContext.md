@@ -1,37 +1,63 @@
 # Tech Context
 
+> Updated: 2026-04-07 — Migrasi Go → Python
+
 ## Languages & Frameworks
 
 | Component | Technology | Version |
 |---|---|---|
-| Control Plane | Go | 1.23 |
-| HTTP Framework | Chi v5 (or Fiber) | latest |
-| gRPC | grpc-go | v1.64 |
+| Control Plane | **Python** | **3.12+** |
+| HTTP Framework | **FastAPI** + uvicorn | latest |
 | Scheduler | HashiCorp Nomad | latest |
-| WASM Runtime | Wasmtime (wasmtime-go) | 22 |
+| WASM Runtime | Wasmtime CLI | 22 |
 | Secure Compute | Firecracker | 1.8 |
 | GUI Runtime | Chromium + Playwright | 126 / 1.45 |
-| Database | PostgreSQL + pgx | 16 / v5 |
-| Cache / Event Bus | Redis or NATS | 7 / latest |
-| Object Storage | MinIO | AGPL |
+| Database | PostgreSQL + psycopg2 | 16 / 2.9 |
+| Cache / Queue | Redis (redis-py) | 7 / 5.x |
+| Object Storage | MinIO (minio SDK) | AGPL |
+| Data Validation | Pydantic v2 | 2.10 |
+| Logging | structlog (JSON) | 24.x |
 | Metrics | Prometheus + Grafana | latest |
-| Tracing | OpenTelemetry | 1.28 |
-| Infra-as-Code | Terraform | 1.8 |
+| Tracing | OpenTelemetry Python | latest |
 
-## Go Dependencies
+## Python Dependencies (pyproject.toml)
 
+```toml
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "redis>=5.2.0",
+    "psycopg2-binary>=2.9.0",
+    "minio>=7.2.0",
+    "python-multipart>=0.0.12",
+    "structlog>=24.4.0",
+    "pydantic>=2.10.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+    "httpx>=0.27.0",
+    "pytest-cov>=5.0.0",
+]
 ```
-github.com/go-chi/chi/v5
-google.golang.org/grpc
-github.com/golang-jwt/jwt/v5
-github.com/spf13/viper
-github.com/redis/go-redis/v9
-github.com/jackc/pgx/v5
-github.com/bytecodealliance/wasmtime-go/v22
-github.com/hashicorp/nomad/api
-go.opentelemetry.io/otel
-github.com/prometheus/client_golang
-```
+
+## Go → Python Dependency Mapping
+
+| Go | Python |
+|----|--------|
+| `github.com/google/uuid` | `import uuid` (stdlib) |
+| `github.com/lib/pq` | `psycopg2-binary` |
+| `github.com/redis/go-redis/v9` | `redis` |
+| `net/http` server | `fastapi` + `uvicorn` |
+| `log/slog` (JSON) | `structlog` |
+| `encoding/json` | `json` (stdlib) |
+| `os/exec` | `subprocess` |
+| `sync.RWMutex` | `threading.RLock` |
+| `context.Context` | function param / `asyncio` |
+| `go build ./...` | `pip install -e .` |
+| `go test ./...` | `pytest` |
 
 ## Infrastructure
 
