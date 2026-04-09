@@ -4,7 +4,6 @@ from __future__ import annotations
 import re
 import uuid
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Callable
 
@@ -174,6 +173,8 @@ class WorkflowService:
         r = StepResult(step_id=step.id, status=StepStatus.RUNNING)
         r.started_at = datetime.now(timezone.utc)
         results[step.id] = r
+        # Safe: steps within a wave have no deps on each other (toposort guarantees this),
+        # so concurrent threads only read results from prior waves, not from this wave.
         try:
             interpolated = _interpolate(step.input, results)
             r.output = self._executor(step.tool, interpolated)
@@ -189,9 +190,11 @@ class WorkflowService:
         results = wf.results
 
         for wave in waves:
-            runnable = [s for s in wave if self._can_run(s, results)]
+            runnable = []
             for s in wave:
-                if not self._can_run(s, results):
+                if self._can_run(s, results):
+                    runnable.append(s)
+                else:
                     results[s.id] = StepResult(step_id=s.id, status=StepStatus.SKIPPED)
 
             if not runnable:
