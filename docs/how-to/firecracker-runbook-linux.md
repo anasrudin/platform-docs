@@ -220,7 +220,7 @@ curl -s -X PUT \
   -H "Content-Type: application/json" \
   -d "{
     \"kernel_image_path\": \"/tmp/fc-assets/vmlinux\",
-    \"boot_args\": \"console=ttyS0 reboot=k panic=1 pci=off\"
+    \"boot_args\": \"console=ttyS0 reboot=k panic=1 pci=off init=/sbin/init\"
   }"
 
 # Set rootfs
@@ -258,7 +258,7 @@ curl -s -X PUT \
   -d '{"action_type": "InstanceStart"}'
 ```
 
-Expected: `{}` (HTTP 204). Wait 2 seconds for the kernel to boot.
+Expected: HTTP 204 No Content (curl prints nothing on success). Wait 2 seconds for the kernel to boot.
 
 **4e. Create the snapshot**
 
@@ -276,7 +276,7 @@ curl -s -X PUT \
   }"
 ```
 
-Expected: `{}` (HTTP 204).
+Expected: HTTP 204 No Content (curl prints nothing on success).
 
 **4f. Write metadata**
 
@@ -289,6 +289,7 @@ cat > /tmp/python-v1/meta.json <<'EOF'
   "rootfs": "python-v1.ext4",
   "vcpus": 2,
   "mem_mib": 512,
+  "created_at": "2026-04-10T00:00:00",
   "dry_run": false,
   "files": {}
 }
