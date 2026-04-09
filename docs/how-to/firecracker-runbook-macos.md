@@ -56,11 +56,11 @@ uv pip install -e ".[dev]"
 Verify:
 
 ```bash
-platform-api --help  # prints uvicorn help
+which platform-api   # confirm entry point is installed
 pytest --collect-only -q 2>&1 | tail -10   # must show collected tests, no errors
 ```
 
-Troubleshoot: if `fc-agent: command not found`, ensure the venv is activated (`source .venv/bin/activate`).
+Troubleshoot: if `platform-api: command not found`, ensure the venv is activated (`source .venv/bin/activate`).
 
 ---
 
