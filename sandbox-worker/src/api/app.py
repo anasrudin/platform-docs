@@ -80,9 +80,9 @@ async def lifespan(app: FastAPI):
     # VM lifecycle — local Firecracker pool on this node
     lifecycle_mgr = VMLifecycleManager(
         storage=None,  # snapshot storage wired below
-        snapshot_name=cfg.firecracker.snapshot_name,
+        snapshot_name=cfg.firecracker.snapshot_bucket,
         pool_size=cfg.firecracker.pool_size,
-        firecracker_bin=cfg.firecracker.binary,
+        firecracker_bin=cfg.firecracker.binary_path,
         dev_mode=cfg.firecracker.dev_mode,
     )
     lifecycle_mgr.start()
