@@ -6,6 +6,8 @@ REGISTRY        ?= localhost:5000
 VERSION         ?= latest
 SNAPSHOT_NAME   ?= python-v1
 SNAPSHOT_DIR    ?= /tmp/snapshots/$(SNAPSHOT_NAME)
+SNAPSHOT_ROOTFS ?= $(SNAPSHOT_DIR)/rootfs.ext4
+SNAPSHOT_PARENT_DIR ?= $(patsubst %/,%,$(dir $(SNAPSHOT_DIR)))
 MINIO_ENDPOINT  ?= http://localhost:9000
 NODE1_IP        ?= localhost
 
@@ -132,12 +134,12 @@ setup:
 
 cluster-setup:
 	@echo ">>> Setting up nodes..."
-	sudo bash services/scripts/setup-control-node.sh
-	sudo bash services/scripts/setup-firecracker.sh
+	sudo bash services/controller/scripts/setup-control-node.sh
+	sudo bash services/controller/scripts/setup-firecracker.sh
 
 cluster-start:
 	@echo ">>> Starting Nomad cluster..."
-	bash services/scripts/start-nomad-cluster.sh
+	bash services/controller/scripts/start-nomad-cluster.sh
 
 cluster-status:
 	nomad node status
@@ -153,12 +155,12 @@ snapshot-rootfs:
 		--name $(SNAPSHOT_NAME) \
 		--python 3.11 \
 		--size 1024 \
-		--out $(SNAPSHOT_DIR)/rootfs.ext4
-	@echo ">>> Rootfs built: $(SNAPSHOT_DIR)/rootfs.ext4"
+		--out $(SNAPSHOT_ROOTFS)
+	@echo ">>> Rootfs built: $(SNAPSHOT_ROOTFS)"
 
 snapshot-create:
 	@echo ">>> Creating Firecracker snapshot..."
-	@[ -f $(SNAPSHOT_DIR)/rootfs.ext4 ] || \
+	@[ -f $(SNAPSHOT_ROOTFS) ] || \
 		{ echo "ERROR: rootfs not found — run 'make snapshot-rootfs' first"; exit 1; }
 	@[ -f /tmp/snapshots/vmlinux.bin ] || { \
 		echo ">>> Downloading kernel..."; \
@@ -166,22 +168,22 @@ snapshot-create:
 			https://s3.amazonaws.com/spec.ccfc.min/img/quickstart_guide/x86_64/kernels/vmlinux.bin \
 			-o /tmp/snapshots/vmlinux.bin; \
 	}
-	@bash tools/snapshot-builder/snapshot-builder.sh \
+	@bash tools/snapshot-builder/fc-snapshot.sh \
 		--name $(SNAPSHOT_NAME) \
-		--rootfs $(SNAPSHOT_DIR)/rootfs.ext4 \
+		--rootfs $(SNAPSHOT_ROOTFS) \
 		--kernel /tmp/snapshots/vmlinux.bin \
-		--out-dir $(SNAPSHOT_DIR)
+		--out-dir $(SNAPSHOT_PARENT_DIR)
 	@echo ">>> Snapshot: $(SNAPSHOT_DIR)/"
 
 snapshot-upload:
 	@echo ">>> Uploading snapshot to MinIO..."
-	@[ -f $(SNAPSHOT_DIR)/vmstate.bin ] || \
+	@[ -f $(SNAPSHOT_DIR)/state ] || \
 		{ echo "ERROR: snapshot not found — run 'make snapshot-create' first"; exit 1; }
 	bash tools/snapshot-builder/upload-minio.sh \
 		--snapshot-dir $(SNAPSHOT_DIR) \
 		--name $(SNAPSHOT_NAME) \
 		--kernel /tmp/snapshots/vmlinux.bin \
-		--rootfs $(SNAPSHOT_DIR)/rootfs.ext4 \
+		--rootfs $(SNAPSHOT_ROOTFS) \
 		--endpoint $(MINIO_ENDPOINT)
 	@echo ">>> Upload done."
 	@mc alias set local $(MINIO_ENDPOINT) minioadmin minioadmin --quiet
@@ -237,7 +239,7 @@ image-load:
 
 deploy:
 	@echo ">>> Deploying sandbox-worker to Nomad..."
-	nomad job run services/nomad/jobs/sandbox-worker.nomad
+	nomad job run services/controller/nomad/jobs/sandbox-worker.nomad
 	@echo ">>> Menunggu job running..."
 	@sleep 5
 	@$(MAKE) deploy-status

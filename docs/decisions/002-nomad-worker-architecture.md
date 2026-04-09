@@ -59,9 +59,9 @@ The repository is organized into three entities:
 
 | Entity | Components | Location |
 |--------|------------|----------|
-| Controller | Consul, HAProxy | `services/consul/`, `services/haproxy/` |
+| Controller | Consul, HAProxy | `services/controller/consul/`, `services/controller/haproxy/` |
 | Worker | Nomad job + FastAPI + VM pool | `sandbox-worker/` |
-| Data | MinIO, Postgres | `services/minio/`, `services/postgres/` |
+| Data | MinIO, Postgres | `services/data/minio/`, `services/data/postgres/` |
 
 Each worker node (`sandbox-worker/`) owns its execution path end-to-end:
 

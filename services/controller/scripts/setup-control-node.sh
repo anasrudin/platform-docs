@@ -106,7 +106,7 @@ echo "✅ Nomad server started."
 # ── Initialize MinIO buckets ──────────────────────────────────────────────────
 echo "Waiting for MinIO to be ready..."
 sleep 5
-bash "$(dirname "$0")/../minio/init-buckets.sh"
+bash "$(dirname "$0")/../../data/minio/init-buckets.sh"
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 NODE_IP=$(hostname -I | awk '{print $1}')

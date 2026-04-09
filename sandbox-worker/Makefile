@@ -66,28 +66,28 @@ infra-down:
 infra-migrate:
 	@echo "Running database migrations..."
 	psql -h $${NODE1_IP:-localhost} -U platform -d platform \
-		-f infra/postgres/migrations/001_init.sql
+		-f ../services/data/postgres/migrations/001_init.sql
 	@echo "Migrations applied."
 
 infra-buckets:
 	@echo "Initializing MinIO buckets..."
 	MINIO_ENDPOINT=$${MINIO_ENDPOINT:-http://localhost:9000} \
-		infra/minio/init-buckets.sh
+		../services/data/minio/init-buckets.sh
 
 infra-setup-node:
-	sudo infra/scripts/setup-all-nodes.sh
+	sudo ../services/controller/scripts/setup-all-nodes.sh
 
 infra-setup-control:
-	sudo infra/scripts/setup-control-node.sh
+	sudo ../services/controller/scripts/setup-control-node.sh
 
 infra-verify:
-	infra/scripts/verify-day1-2.sh $${NODE1_IP:-localhost}
+	../services/controller/scripts/verify-day1-2.sh $${NODE1_IP:-localhost}
 
 infra-fc-setup:
-	sudo infra/scripts/setup-firecracker.sh
+	sudo ../services/controller/scripts/setup-firecracker.sh
 
 infra-fc-test:
-	sudo infra/scripts/test-firecracker.sh
+	sudo ../services/controller/scripts/test-firecracker.sh
 
 nomad-start:
 	@chmod +x scripts/start-nomad-cluster.sh

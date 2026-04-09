@@ -36,8 +36,8 @@ Full Python migration complete. Five advanced feature phases shipped. All 235 te
 
 #### Phase 2 — HAProxy load balancing and session KV
 
-- HAProxy configuration template (`infra/haproxy/haproxy.cfg.j2`) renders backends from Consul service catalog.
-- Dynamic reload via `infra/haproxy/haproxy.cfg.ctmpl` and `infra/haproxy/consul-template.hcl` — zero downtime on backend changes.
+- HAProxy configuration in `services/controller/haproxy/baremetal/haproxy.cfg` supports static local deployments.
+- Dynamic reload via `services/controller/haproxy/server/haproxy.cfg.ctmpl` and `services/controller/haproxy/server/consul-template.hcl` — zero downtime on backend changes.
 - Session-to-VM mappings stored in Consul KV at `sandbox/sessions/{session_id}`.
 - New module: `sandbox_platform/session/consul_store.py` — async session store backed by Consul KV.
 - +11 unit tests.
@@ -73,8 +73,8 @@ Full Python migration complete. Five advanced feature phases shipped. All 235 te
 
 ### Infrastructure changes
 
-- `infra/haproxy/` — HAProxy Jinja2 template, consul-template config, zero-downtime reload HCL.
-- `infra/nomad/jobs/` — Nomad job definitions updated for Python agents.
+- `services/controller/haproxy/` — HAProxy configs and consul-template reload assets.
+- `services/controller/nomad/jobs/` — Nomad job definitions updated for Python agents.
 - New MinIO bucket: `platform-packages` for wheel caching.
 
 ### New environment variables

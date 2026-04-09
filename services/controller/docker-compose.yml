@@ -1,4 +1,6 @@
 # services/controller/docker-compose.yml
+# Consul runs in Compose for dev.
+# HAProxy assets live in ./haproxy/ but are not containerized here yet.
 services:
   consul:
     image: hashicorp/consul:1.17
@@ -13,3 +15,8 @@ services:
       retries: 5
     networks:
       - platform-net
+
+networks:
+  platform-net:
+    name: platform-net
+    driver: bridge

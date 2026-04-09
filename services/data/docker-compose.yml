@@ -29,7 +29,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ../postgres/migrations/001_init.sql:/docker-entrypoint-initdb.d/001_init.sql
+      - ./postgres/migrations/001_init.sql:/docker-entrypoint-initdb.d/001_init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -53,3 +53,8 @@ services:
 volumes:
   minio_data:
   postgres_data:
+
+networks:
+  platform-net:
+    name: platform-net
+    driver: bridge

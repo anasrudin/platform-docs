@@ -37,6 +37,14 @@ assert_contains() {
     fail "$label" "pattern '$pattern' not found in $file"
   fi
 }
+assert_not_contains() {
+  local label="$1" file="$2" pattern="$3"
+  if grep -q "$pattern" "$file" 2>/dev/null; then
+    fail "$label" "unexpected pattern '$pattern' found in $file"
+  else
+    pass "$label"
+  fi
+}
 assert_exit() {
   local label="$1"; shift
   local expected_code="${1}"; shift
@@ -80,6 +88,10 @@ section "2. --help flag"
 "$SB_DIR/snapshot-builder.sh" --help | grep -q "snapshot-builder" \
   && pass "snapshot-builder --help" \
   || fail "snapshot-builder --help" "no output"
+
+"$SB_DIR/snapshot-builder.sh" --help | grep -q -- "--rootfs" \
+  && pass "snapshot-builder --help mentions --rootfs" \
+  || fail "snapshot-builder --help mentions --rootfs" "missing --rootfs option"
 
 "$SB_DIR/build-rootfs.sh" --help | grep -q "rootfs" \
   && pass "build-rootfs --help" \
@@ -125,7 +137,20 @@ section "5. snapshot-builder.sh --dry-run (full pipeline)"
 assert_file "builder output log exists" "$TMP/sb-output.log"
 
 # ─────────────────────────────────────────────────────────────────────────────
-section "6. snapshot-builder.sh --skip-snapshot placeholder"
+section "6. snapshot-builder.sh --rootfs override"
+
+CUSTOM_ROOTFS="$TMP/custom/custom.ext4"
+"$SB_DIR/snapshot-builder.sh" \
+  --name          "custom-rootfs-v1" \
+  --rootfs        "$CUSTOM_ROOTFS" \
+  --skip-snapshot \
+  --skip-upload 2>&1 | tee "$TMP/custom-rootfs-output.log" >/dev/null || true
+
+assert_file "custom rootfs image created" "$CUSTOM_ROOTFS"
+assert_contains "custom rootfs path appears in output" "$TMP/custom-rootfs-output.log" "$CUSTOM_ROOTFS"
+
+# ─────────────────────────────────────────────────────────────────────────────
+section "7. snapshot-builder.sh --skip-snapshot placeholder"
 
 "$SB_DIR/snapshot-builder.sh" \
   --name          "placeholder-v1" \
@@ -140,7 +165,7 @@ assert_file "placeholder meta.json created" "$META"
 assert_contains "meta.json has name field" "$META" "placeholder-v1"
 
 # ─────────────────────────────────────────────────────────────────────────────
-section "7. upload-minio.sh argument validation"
+section "8. upload-minio.sh argument validation"
 
 # Missing required args should exit non-zero
 assert_exit "upload-minio fails without --snapshot-dir" 1 \
@@ -153,7 +178,7 @@ assert_exit "upload-minio fails for nonexistent dir" 1 \
   "$SB_DIR/upload-minio.sh" --snapshot-dir "/no/such/dir" --name "foo"
 
 # ─────────────────────────────────────────────────────────────────────────────
-section "8. upload-minio.sh --dry-run with valid snapshot dir"
+section "9. upload-minio.sh --dry-run with valid snapshot dir"
 
 # Prepare a fake snapshot dir
 FAKE_SNAP="$TMP/fake-snapshot"
@@ -170,9 +195,16 @@ dd if=/dev/zero of="$FAKE_SNAP/mem"   bs=1K count=1 status=none
 assert_contains "dry-run shows vmstate.bin upload" "$TMP/upload-dryrun.log" "vmstate.bin"
 assert_contains "dry-run shows memory.bin upload"  "$TMP/upload-dryrun.log" "memory.bin"
 assert_contains "dry-run shows meta.json upload"   "$TMP/upload-dryrun.log" "meta.json"
+assert_not_contains "dry-run skips mc auto-install" "$TMP/upload-dryrun.log" "Installing mc"
+
+assert_exit "upload-minio fails for missing explicit rootfs" 1 \
+  "$SB_DIR/upload-minio.sh" --snapshot-dir "$FAKE_SNAP" --name "fake-snap" --rootfs "/no/such/rootfs" --dry-run
+
+assert_exit "upload-minio fails for missing explicit kernel" 1 \
+  "$SB_DIR/upload-minio.sh" --snapshot-dir "$FAKE_SNAP" --name "fake-snap" --kernel "/no/such/kernel" --dry-run
 
 # ─────────────────────────────────────────────────────────────────────────────
-section "9. guest agent script syntax"
+section "10. guest agent script syntax"
 
 # Verify the embedded Python guest agent has valid syntax
 AGENT_PY="$TMP/agent.py"

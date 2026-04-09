@@ -16,7 +16,7 @@
 # Uploads:
 #   platform-snapshots/<name>/vmstate.bin
 #   platform-snapshots/<name>/memory.bin
-#   platform-snapshots/<name>/rootfs.ext4   (if --kernel given)
+#   platform-snapshots/<name>/rootfs.ext4   (if --rootfs given)
 #   platform-snapshots/<name>/kernel.bin    (if --kernel given)
 #   platform-snapshots/<name>/meta.json
 # ─────────────────────────────────────────────────────────────────────────────
@@ -29,7 +29,7 @@ ROOTFS_PATH=""
 ENDPOINT="${MINIO_ENDPOINT:-http://localhost:9000}"
 ACCESS_KEY="${MINIO_ACCESS_KEY:-minioadmin}"
 SECRET_KEY="${MINIO_SECRET_KEY:-minioadmin}"
-BUCKET="platform-snapshots"
+BUCKET="${MINIO_BUCKET:-platform-snapshots}"
 DRY_RUN=false
 ALIAS="sb-upload-$$"
 
@@ -50,6 +50,8 @@ done
 [[ -z "$SNAPSHOT_DIR" ]] && { echo "ERROR: --snapshot-dir required" >&2; exit 1; }
 [[ -z "$SNAPSHOT_NAME" ]] && { echo "ERROR: --name required" >&2; exit 1; }
 [[ ! -d "$SNAPSHOT_DIR" ]] && { echo "ERROR: $SNAPSHOT_DIR not found" >&2; exit 1; }
+[[ -n "$KERNEL_PATH" && ! -f "$KERNEL_PATH" ]] && { echo "ERROR: kernel not found: $KERNEL_PATH" >&2; exit 1; }
+[[ -n "$ROOTFS_PATH" && ! -f "$ROOTFS_PATH" ]] && { echo "ERROR: rootfs not found: $ROOTFS_PATH" >&2; exit 1; }
 
 # Remap files to canonical MinIO names
 STATE_FILE="$SNAPSHOT_DIR/state"
@@ -59,16 +61,6 @@ META_FILE="$SNAPSHOT_DIR/meta.json"
 [[ ! -f "$STATE_FILE" ]] && { echo "ERROR: $STATE_FILE not found" >&2; exit 1; }
 [[ ! -f "$MEM_FILE"   ]] && { echo "ERROR: $MEM_FILE not found" >&2; exit 1; }
 [[ ! -f "$META_FILE"  ]] && { echo "ERROR: $META_FILE not found" >&2; exit 1; }
-
-# ── Ensure mc is available ────────────────────────────────────────────────────
-if ! command -v mc &>/dev/null; then
-  ARCH="$(uname -m)"
-  OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
-  MC_ARCH="$([[ $ARCH == 'aarch64' ]] && echo arm64 || echo amd64)"
-  MC_URL="https://dl.min.io/client/mc/release/${OS}-${MC_ARCH}/mc"
-  echo "Installing mc from $MC_URL..."
-  curl -fsSL "$MC_URL" -o /usr/local/bin/mc && chmod +x /usr/local/bin/mc
-fi
 
 # ── Helper wrappers ──────────────────────────────────────────────────────────
 run_mc() {
@@ -97,8 +89,25 @@ echo "  Dir:       $SNAPSHOT_DIR"
 echo ""
 
 # ── Configure mc alias ────────────────────────────────────────────────────────
-cleanup() { mc alias remove "$ALIAS" &>/dev/null || true; }
+cleanup() {
+  command -v mc &>/dev/null && mc alias remove "$ALIAS" &>/dev/null || true
+}
 trap cleanup EXIT
+
+if [[ "$DRY_RUN" != "true" ]] && ! command -v mc &>/dev/null; then
+  command -v curl &>/dev/null || { echo "ERROR: curl not found" >&2; exit 1; }
+  ARCH="$(uname -m)"
+  OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
+  case "$ARCH" in
+    arm64|aarch64) MC_ARCH="arm64" ;;
+    x86_64|amd64)  MC_ARCH="amd64" ;;
+    *) echo "ERROR: unsupported architecture for mc auto-install: $ARCH" >&2; exit 1 ;;
+  esac
+  MC_URL="https://dl.min.io/client/mc/release/${OS}-${MC_ARCH}/mc"
+  echo "Installing mc from $MC_URL..."
+  curl -fsSL "$MC_URL" -o /usr/local/bin/mc && chmod +x /usr/local/bin/mc
+  command -v mc &>/dev/null || { echo "ERROR: mc installation failed" >&2; exit 1; }
+fi
 
 if [[ "$DRY_RUN" == "true" ]]; then
   echo "[dry-run] mc alias set $ALIAS $ENDPOINT $ACCESS_KEY ****"

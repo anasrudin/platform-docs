@@ -58,6 +58,7 @@ done
 [[ ! -f "$KERNEL_PATH" ]] && { echo "ERROR: kernel not found: $KERNEL_PATH" >&2; exit 1; }
 [[ ! -f "$ROOTFS_PATH" ]] && { echo "ERROR: rootfs not found: $ROOTFS_PATH" >&2; exit 1; }
 [[ ! -x "$FC_BIN" ]] && { echo "ERROR: firecracker not found at $FC_BIN" >&2; exit 1; }
+command -v curl &>/dev/null || { echo "ERROR: curl not found" >&2; exit 1; }
 
 SNAP_DIR="$OUT_DIR/$SNAPSHOT_NAME"
 
@@ -86,11 +87,35 @@ fc_api() {
   local method="$1"
   local path="$2"
   local body="${3:-}"
-  curl -s --unix-socket "$FC_SOCKET" \
-    -X "$method" \
-    -H "Content-Type: application/json" \
-    ${body:+-d "$body"} \
-    "http://localhost$path"
+  local response status response_body
+  local curl_args=(
+    -sS
+    --unix-socket "$FC_SOCKET"
+    -X "$method"
+    -H "Content-Type: application/json"
+    -w $'\n%{http_code}'
+  )
+
+  [[ -n "$body" ]] && curl_args+=(-d "$body")
+
+  response="$(curl "${curl_args[@]}" "http://localhost$path")" || {
+    echo "ERROR: Firecracker API request failed: $method $path" >&2
+    return 1
+  }
+
+  status="${response##*$'\n'}"
+  response_body="${response%$'\n'*}"
+
+  if [[ ! "$status" =~ ^2[0-9]{2}$ ]]; then
+    if [[ -n "$response_body" ]]; then
+      echo "ERROR: Firecracker API $method $path returned HTTP $status: $response_body" >&2
+    else
+      echo "ERROR: Firecracker API $method $path returned HTTP $status" >&2
+    fi
+    return 1
+  fi
+
+  printf '%s' "$response_body"
 }
 
 # ── Step 1: Create output directory ──────────────────────────────────────────
@@ -105,6 +130,11 @@ FC_PID=$!
 # Wait for socket to appear (up to 3s).
 for i in $(seq 1 30); do
   [[ -S "$FC_SOCKET" ]] && break
+  if ! kill -0 "$FC_PID" 2>/dev/null; then
+    wait "$FC_PID" 2>/dev/null || true
+    echo "ERROR: Firecracker exited before API socket was ready" >&2
+    exit 1
+  fi
   sleep 0.1
 done
 [[ -S "$FC_SOCKET" ]] || { echo "ERROR: Firecracker socket not ready" >&2; exit 1; }
@@ -144,6 +174,12 @@ fc_api PUT /actions '{"action_type": "InstanceStart"}' > /dev/null
 # In production: replace with a gRPC health check to the guest agent.
 BOOT_TIMEOUT=30
 for i in $(seq 1 $BOOT_TIMEOUT); do
+  if ! kill -0 "$FC_PID" 2>/dev/null; then
+    wait "$FC_PID" 2>/dev/null || true
+    echo "" >&2
+    echo "ERROR: Firecracker exited before snapshot capture completed" >&2
+    exit 1
+  fi
   sleep 1
   echo -n "."
 done
@@ -163,6 +199,9 @@ SNAP_RESPONSE=$(fc_api PUT /snapshot/create "{
   \"version\": \"1.0.0\"
 }")
 echo "  Snapshot response: $SNAP_RESPONSE"
+
+[[ -s "$SNAP_DIR/state" ]] || { echo "ERROR: snapshot state file missing or empty: $SNAP_DIR/state" >&2; exit 1; }
+[[ -s "$SNAP_DIR/mem"   ]] || { echo "ERROR: snapshot memory file missing or empty: $SNAP_DIR/mem" >&2; exit 1; }
 
 # ── Step 6: Write metadata ────────────────────────────────────────────────────
 echo "[6/6] Writing metadata..."

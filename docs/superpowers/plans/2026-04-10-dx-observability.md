@@ -40,7 +40,7 @@
 
 **Files:**
 - Create: `services/data/docker-compose.yml`
-- Create: `services/data/postgres/` (symlink atau copy migrations dari `services/postgres/`)
+- Create: `services/data/postgres/` (isi migration berada di dalam layer data)
 
 - [ ] **Step 1: Buat `services/data/docker-compose.yml`**
 
@@ -76,7 +76,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ../postgres/migrations/001_init.sql:/docker-entrypoint-initdb.d/001_init.sql
+      - ./postgres/migrations/001_init.sql:/docker-entrypoint-initdb.d/001_init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -103,7 +103,8 @@ volumes:
 
 networks:
   platform-net:
-    external: true
+    name: platform-net
+    driver: bridge
 ```
 
 - [ ] **Step 2: Buat `services/controller/docker-compose.yml`**
@@ -127,20 +128,20 @@ services:
 
 networks:
   platform-net:
-    external: true
+    name: platform-net
+    driver: bridge
 ```
 
-- [ ] **Step 3: Pastikan folder `services/postgres/` ada dengan migration**
+- [ ] **Step 3: Pastikan folder `services/data/postgres/` ada dengan migration**
 
 Cek apakah file migration sudah ada:
 ```bash
-ls services/postgres/migrations/ 2>/dev/null || echo "MISSING"
+ls services/data/postgres/migrations/ 2>/dev/null || echo "MISSING"
 ```
 
 Kalau `MISSING`, buat symlink:
 ```bash
-mkdir -p services/postgres
-ln -sf ../nomad/jobs services/postgres/migrations 2>/dev/null || true
+mkdir -p services/data/postgres/migrations
 ```
 
 Catatan: kalau migration aslinya ada di path lain, sesuaikan path volume di postgres service di atas.
@@ -216,7 +217,8 @@ services:
 
 networks:
   platform-net:
-    external: true
+    name: platform-net
+    driver: bridge
 ```
 
 Catatan: `all-in-one` sudah embed storage, jadi `config.yaml` diatas tidak di-mount (dipakai sebagai referensi saja jika nanti migrasi ke jaeger v2). Simpan file tetap untuk dokumentasi.
@@ -238,6 +240,7 @@ include:
 
 networks:
   platform-net:
+    name: platform-net
     driver: bridge
 ```
 

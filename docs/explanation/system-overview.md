@@ -120,9 +120,9 @@ Configuration files:
 
 | File | Purpose |
 |---|---|
-| `infra/haproxy/haproxy.cfg.j2` | Jinja2 template for static deployments |
-| `infra/haproxy/haproxy.cfg.ctmpl` | Go template for consul-template dynamic reload |
-| `infra/haproxy/consul-template.hcl` | consul-template config with HAProxy reload command |
+| `services/controller/haproxy/baremetal/haproxy.cfg` | Static HAProxy config for local or fixed-node deployments |
+| `services/controller/haproxy/server/haproxy.cfg.ctmpl` | Go template for consul-template dynamic reload |
+| `services/controller/haproxy/server/consul-template.hcl` | consul-template config with HAProxy reload command |
 
 ---
 

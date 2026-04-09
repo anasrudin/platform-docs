@@ -20,7 +20,7 @@ New `docker/office-agent/Dockerfile` extending `sandbox-base`:
 - Estimated size: ~550MB
 
 ### Nomad job spec
-Add `office-agent` group to `services/nomad/jobs/sandbox-worker.nomad` mirroring `gui-agent` but using `sandbox-office-agent` image.
+Add `office-agent` group to `services/controller/nomad/jobs/sandbox-worker.nomad` mirroring `gui-agent` but using `sandbox-office-agent` image.
 
 ---
 
@@ -175,7 +175,7 @@ DELETE /snapshots/{session_id}
 |------|--------|
 | `docker/gui-agent/Dockerfile` | Edit — remove LibreOffice + playwright install |
 | `docker/office-agent/Dockerfile` | New |
-| `services/nomad/jobs/sandbox-worker.nomad` | Edit — add office-agent group |
+| `services/controller/nomad/jobs/sandbox-worker.nomad` | Edit — add office-agent group |
 | `models/dag.py` | New |
 | `models/session.py` | Edit — add SnapshotMode, snapshot_mode field |
 | `service/dag.py` | New |

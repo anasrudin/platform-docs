@@ -3,7 +3,7 @@
 # haproxy.cfg, then performs a zero-downtime HAProxy reload.
 #
 # Run with:
-#   consul-template -config=infra/haproxy/consul-template.hcl
+#   consul-template -config=services/controller/haproxy/server/consul-template.hcl
 #
 # Environment variables consumed:
 #   CONSUL_HTTP_ADDR   — Consul address (default: 127.0.0.1:8500)
@@ -25,7 +25,7 @@ consul {
 
 # Re-render haproxy.cfg whenever any sandbox agent service changes
 template {
-  source      = "infra/haproxy/haproxy.cfg.ctmpl"
+  source      = "services/controller/haproxy/server/haproxy.cfg.ctmpl"
   destination = "/etc/haproxy/haproxy.cfg"
 
   # Zero-downtime reload: send new PID list to the existing master process

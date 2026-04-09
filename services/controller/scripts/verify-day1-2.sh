@@ -113,7 +113,7 @@ TABLES=$(psql -h "${NODE1_IP}" -U platform -d platform \
 if [ "$TABLES" -ge 3 ]; then
     check "Schema migrated (${TABLES} tables)" "ok"
 else
-    check "Schema migrated (${TABLES} tables)" "run infra/postgres/migrations/001_init.sql"
+    check "Schema migrated (${TABLES} tables)" "run services/data/postgres/migrations/001_init.sql"
 fi
 
 echo ""

@@ -14,12 +14,13 @@
 #   --config   FILE    Load variables from a .env file (default: config/python-v1.env)
 #   --name     NAME    Snapshot name (overrides config)
 #   --kernel   PATH    Path to vmlinux kernel binary (required unless --download-kernel)
+#   --rootfs   PATH    Path to rootfs ext4 image (default: <cache>/<name>.ext4)
 #   --download-kernel  Download the Firecracker test kernel automatically
-#   --skip-rootfs      Skip rootfs build (use existing rootfs.ext4 in cache dir)
+#   --skip-rootfs      Skip rootfs build (reuse existing rootfs image)
 #   --skip-snapshot    Skip Firecracker snapshot (useful when no KVM)
 #   --skip-upload      Skip MinIO upload
 #   --dry-run          Dry-run all subcommands
-#   --out-dir  DIR     Local output dir (default: /var/sandbox/snapshots)
+#   --out-dir  DIR     Local output base dir (artifacts end up in <out-dir>/<name>/)
 #   --help             Print this help
 #
 # Environment variables (override config):
@@ -33,6 +34,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_FILE="$SCRIPT_DIR/config/python-v1.env"
 SNAPSHOT_NAME=""          # set after config load
 KERNEL_PATH=""
+ROOTFS_PATH=""
 DOWNLOAD_KERNEL=false
 SKIP_ROOTFS=false
 SKIP_SNAPSHOT=false
@@ -67,6 +69,7 @@ while [[ $# -gt 0 ]]; do
     --config)          shift 2 ;;                          # already handled
     --name)            SNAPSHOT_NAME="$2"; shift 2 ;;
     --kernel)          KERNEL_PATH="$2"; shift 2 ;;
+    --rootfs)          ROOTFS_PATH="$2"; shift 2 ;;
     --download-kernel) DOWNLOAD_KERNEL=true; shift ;;
     --skip-rootfs)     SKIP_ROOTFS=true; shift ;;
     --skip-snapshot)   SKIP_SNAPSHOT=true; shift ;;
@@ -82,16 +85,29 @@ done
 SNAPSHOT_NAME="${SNAPSHOT_NAME:-python-v1}"
 
 # ── Derived paths ─────────────────────────────────────────────────────────────
-mkdir -p "$OUT_DIR" "$CACHE_DIR"
-ROOTFS_PATH="$CACHE_DIR/${SNAPSHOT_NAME}.ext4"
+ROOTFS_PATH="${ROOTFS_PATH:-$CACHE_DIR/${SNAPSHOT_NAME}.ext4}"
 SNAP_DIR="$OUT_DIR/$SNAPSHOT_NAME"
-DR_FLAG="$([[ "$DRY_RUN" == true ]] && echo '--dry-run' || echo '')"
 
 run() {
   if [[ "$DRY_RUN" == "true" ]]; then
     echo "[dry-run] $*"
   else
     "$@"
+  fi
+}
+
+require_real_snapshot_env() {
+  local host_os
+  host_os="$(uname -s)"
+
+  if [[ "$host_os" != "Linux" ]]; then
+    echo "ERROR: real snapshot build requires Linux; use --skip-snapshot on $host_os" >&2
+    exit 1
+  fi
+
+  if [[ ! -e /dev/kvm ]]; then
+    echo "ERROR: /dev/kvm not found; use --skip-snapshot or run on a KVM-enabled Linux host" >&2
+    exit 1
   fi
 }
 
@@ -103,6 +119,7 @@ echo ""
 echo "  Snapshot:  $SNAPSHOT_NAME"
 echo "  vCPUs:     $VCPUS"
 echo "  Memory:    ${MEM_MIB}MiB"
+echo "  Rootfs:    $ROOTFS_PATH"
 echo "  Cache dir: $CACHE_DIR"
 echo "  Out dir:   $OUT_DIR"
 echo ""
@@ -121,6 +138,12 @@ if [[ "$DOWNLOAD_KERNEL" == "true" && -z "$KERNEL_PATH" ]]; then
 fi
 
 # ── Step 2: Build rootfs ──────────────────────────────────────────────────────
+if [[ "$SKIP_SNAPSHOT" != "true" && "$DRY_RUN" != "true" ]]; then
+  require_real_snapshot_env
+fi
+
+mkdir -p "$OUT_DIR" "$CACHE_DIR"
+
 if [[ "$SKIP_ROOTFS" == "true" ]]; then
   echo "[rootfs] Skipping rootfs build (--skip-rootfs)"
   # Only require rootfs to exist when we actually need it (i.e. building a snapshot)
@@ -129,13 +152,19 @@ if [[ "$SKIP_ROOTFS" == "true" ]]; then
   fi
 else
   echo "[rootfs] Building Python-${PYTHON_VERSION} rootfs..."
-  # Detect if we're on Linux with loop device support
-  ROOTFS_FLAGS="--name $SNAPSHOT_NAME --out $ROOTFS_PATH --size $ROOTFS_SIZE_MB --python $PYTHON_VERSION"
+  rootfs_cmd=(
+    "$SCRIPT_DIR/build-rootfs.sh"
+    --name "$SNAPSHOT_NAME"
+    --out "$ROOTFS_PATH"
+    --size "$ROOTFS_SIZE_MB"
+    --python "$PYTHON_VERSION"
+  )
   if [[ "$DRY_RUN" == "true" ]] || [[ "$(uname -s)" != "Linux" ]]; then
-    run "$SCRIPT_DIR/build-rootfs.sh" $ROOTFS_FLAGS --dry-run
+    rootfs_cmd+=(--dry-run)
   else
-    run "$SCRIPT_DIR/build-rootfs.sh" $ROOTFS_FLAGS
+    :
   fi
+  run "${rootfs_cmd[@]}"
   echo "[rootfs] Done: $ROOTFS_PATH"
 fi
 
@@ -171,11 +200,15 @@ if [[ "$SKIP_UPLOAD" == "true" ]]; then
   echo "[upload] Skipping MinIO upload (--skip-upload)"
 else
   echo "[upload] Uploading snapshot to MinIO..."
-  UPLOAD_FLAGS="--snapshot-dir $SNAP_DIR --name $SNAPSHOT_NAME"
-  [[ -n "$KERNEL_PATH" ]] && UPLOAD_FLAGS="$UPLOAD_FLAGS --kernel $KERNEL_PATH"
-  [[ -f "$ROOTFS_PATH" ]] && UPLOAD_FLAGS="$UPLOAD_FLAGS --rootfs $ROOTFS_PATH"
-  [[ "$DRY_RUN" == "true" ]] && UPLOAD_FLAGS="$UPLOAD_FLAGS --dry-run"
-  run "$SCRIPT_DIR/upload-minio.sh" $UPLOAD_FLAGS
+  upload_cmd=(
+    "$SCRIPT_DIR/upload-minio.sh"
+    --snapshot-dir "$SNAP_DIR"
+    --name "$SNAPSHOT_NAME"
+  )
+  [[ -n "$KERNEL_PATH" ]] && upload_cmd+=(--kernel "$KERNEL_PATH")
+  [[ -f "$ROOTFS_PATH" ]] && upload_cmd+=(--rootfs "$ROOTFS_PATH")
+  [[ "$DRY_RUN" == "true" ]] && upload_cmd+=(--dry-run)
+  run "${upload_cmd[@]}"
 fi
 
 # ── Summary ───────────────────────────────────────────────────────────────────

@@ -62,6 +62,8 @@ pytest --collect-only -q 2>&1 | tail -10   # must show collected tests, no error
 
 Troubleshoot: if `platform-api: command not found`, ensure the venv is activated (`source .venv/bin/activate`).
 
+> **Known issue:** The `fc-agent`, `wasm-agent`, and `gui-agent` entry points are registered in `pyproject.toml` but will fail immediately on invocation because the `agents` package (`src/agents/`) does not yet exist. Only `platform-api` is functional. Do not attempt to run the other entry points directly.
+
 ---
 
 ## 3. Start infrastructure
@@ -82,10 +84,12 @@ Verify all three services are healthy:
 docker compose ps
 ```
 
-Expected — all three show `healthy`:
+Expected — five services total. Data and controller services show `healthy`; jaeger has no healthcheck so it shows `Up` only:
 
 ```
 NAME        STATUS
+consul      Up (healthy)
+jaeger      Up
 minio       Up (healthy)
 postgres    Up (healthy)
 redis       Up (healthy)
@@ -120,6 +124,8 @@ Expected:
   }
 }
 ```
+>
+> **Known issue:** current `platform-api` startup still has VM-pool warmup wiring issues. If the process exits before `/health` is available, treat section 3 as the intended workflow and continue with sections 4-5 to validate snapshot artifacts directly.
 
 Troubleshoot: if MinIO is unreachable, confirm Docker Desktop is running and `docker compose ps` shows port `9000->9000`.
 
@@ -131,6 +137,39 @@ In sim mode there is no real VM. A "snapshot" is three files uploaded to MinIO:
 - `vmstate.bin` — dummy binary (placeholder for VM state)
 - `memory.bin` — dummy binary (placeholder for VM memory)
 - `meta.json` — JSON metadata the fc-agent reads on startup
+
+Recommended for this repo: use the helper scripts in `tools/snapshot-builder/`. They create local placeholder artifacts with the current repo layout:
+- local files: `<out-dir>/<name>/state`, `mem`, `meta.json`
+- uploaded objects: `<name>/vmstate.bin`, `memory.bin`, `meta.json`
+
+Run from the repo root (`platform-docs/`):
+
+```bash
+tools/snapshot-builder/test/test-snapshot-builder.sh
+
+export SNAPSHOT_OUT_DIR=/tmp/snapshots
+export SNAPSHOT_CACHE_DIR=/tmp/snapshot-cache
+
+bash tools/snapshot-builder/snapshot-builder.sh \
+  --name python-v1 \
+  --skip-snapshot \
+  --skip-upload
+
+bash tools/snapshot-builder/upload-minio.sh \
+  --snapshot-dir /tmp/snapshots/python-v1 \
+  --name python-v1 \
+  --rootfs /tmp/snapshot-cache/python-v1.ext4 \
+  --endpoint http://localhost:9000
+
+mc alias set local http://localhost:9000 minioadmin minioadmin
+mc ls local/platform-snapshots/python-v1/
+```
+
+> On macOS, `snapshot-builder.sh` automatically falls back to a placeholder rootfs build and `--skip-snapshot` creates dummy `state`/`mem` files for upload testing.
+>
+> Do not use `make snapshot-create` on macOS. That target invokes the real Firecracker snapshot path, which requires Linux + KVM.
+
+The manual object-creation flow below is still useful if you want to inspect the uploaded files directly.
 
 **4a. Create the MinIO bucket**
 
@@ -195,7 +234,9 @@ Troubleshoot: if `mc alias set` fails, check MinIO is up (`docker compose ps` fr
 
 `SnapshotStore.ensure()` downloads from MinIO to a local cache on first access, then serves from disk on subsequent requests. The cache dir is `SNAPSHOT_CACHE_DIR` (default `/var/sandbox/cache`).
 
-> **Known issue:** The `fc-agent` entry point currently fails to start because the `agents` package is not yet present in `src/`. Running `fc-agent` will produce `ModuleNotFoundError: No module named 'agents'`. Section 5 documents the intended workflow for when the package is available. To verify snapshot download now, you can exercise `SnapshotStore` directly via the platform API.
+> **Known issue:** The `fc-agent` entry point currently fails to start because the `agents` package is not yet present in `src/`. Running `fc-agent` will produce `ModuleNotFoundError: No module named 'agents'`. Section 5 documents the intended workflow for when the package is available.
+>
+> **Current limitation:** there is no standalone HTTP endpoint that forces a named snapshot download independently of the VM pool startup path. Until `fc-agent` startup is repaired, the practical verification available today is `mc ls` for the uploaded objects plus local-cache inspection once the runtime path is fixed.
 
 **5a. Start fc-agent with snapshot env vars**
 

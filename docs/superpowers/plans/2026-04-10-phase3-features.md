@@ -17,7 +17,7 @@
 | `sandbox-worker/pyproject.toml` | Edit — add `pythonpath = ["src"]` to pytest options |
 | `docker/gui-agent/Dockerfile` | Edit — remove LibreOffice + `playwright install chromium` |
 | `docker/office-agent/Dockerfile` | Create — LibreOffice image |
-| `services/nomad/jobs/sandbox-worker.nomad` | Edit — add office-agent group |
+| `services/controller/nomad/jobs/sandbox-worker.nomad` | Edit — add office-agent group |
 | `sandbox-worker/src/service/workflow.py` | Create — WorkflowService, _interpolate, errors |
 | `sandbox-worker/src/api/routes/workflow.py` | Create — POST /workflows, GET /workflows/{id} |
 | `sandbox-worker/src/api/app.py` | Edit — register workflow router |
@@ -79,7 +79,7 @@ git commit -m "fix: add pythonpath=src to pytest config"
 **Files:**
 - Modify: `docker/gui-agent/Dockerfile`
 - Create: `docker/office-agent/Dockerfile`
-- Modify: `services/nomad/jobs/sandbox-worker.nomad`
+- Modify: `services/controller/nomad/jobs/sandbox-worker.nomad`
 
 - [ ] **Step 1: Fix gui-agent Dockerfile**
 
@@ -147,7 +147,7 @@ CMD ["python3", "-m", "uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "
 
 - [ ] **Step 3: Add office-agent group to Nomad job spec**
 
-Read `services/nomad/jobs/sandbox-worker.nomad`. Find the `group "gui-agent"` block and add an `office-agent` group directly after it:
+Read `services/controller/nomad/jobs/sandbox-worker.nomad`. Find the `group "gui-agent"` block and add an `office-agent` group directly after it:
 
 ```hcl
   group "office-agent" {
@@ -202,7 +202,7 @@ Read `services/nomad/jobs/sandbox-worker.nomad`. Find the `group "gui-agent"` bl
 - [ ] **Step 4: Commit**
 
 ```bash
-git add docker/gui-agent/Dockerfile docker/office-agent/Dockerfile services/nomad/jobs/sandbox-worker.nomad
+git add docker/gui-agent/Dockerfile docker/office-agent/Dockerfile services/controller/nomad/jobs/sandbox-worker.nomad
 git commit -m "feat: split office-agent from gui-agent, fix Playwright Chromium duplication"
 ```
 

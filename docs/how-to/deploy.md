@@ -65,14 +65,14 @@ This installs and starts:
 - MinIO
 - the Nomad server configuration
 
-It also initializes MinIO buckets through `infra/minio/init-buckets.sh`.
+It also initializes MinIO buckets through `services/data/minio/init-buckets.sh`.
 
 ### Phase 3: Configure Nomad runtime nodes
 
 On `node2` and `node3`, deploy the Nomad client configuration from:
 
-- `infra/nomad/client.hcl`
-- `infra/systemd/nomad.service` if you need the provided unit file
+- `services/controller/nomad/client.hcl`
+- `services/controller/systemd/nomad.service` if you need the provided unit file
 
 Before starting Nomad clients:
 
@@ -101,11 +101,11 @@ NODE1_IP=<node1-ip> make infra-verify
 
 This applies:
 
-- `infra/postgres/migrations/001_init.sql`
+- `services/data/postgres/migrations/001_init.sql`
 - MinIO bucket creation and policies
 - Day 1-2 verification checks
 
-If you plan to use the current real Wasmtime path, also ensure the bucket referenced by `MINIO_WASM_BUCKET` exists. The runtime currently defaults to `platform-modules`, which is separate from the buckets created by `infra/minio/init-buckets.sh`.
+If you plan to use the current real Wasmtime path, also ensure the bucket referenced by `MINIO_WASM_BUCKET` exists. The runtime currently defaults to `platform-modules`, which is separate from the buckets created by `services/data/minio/init-buckets.sh`.
 
 ### Phase 5: Firecracker runtime bootstrap
 

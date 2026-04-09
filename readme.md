@@ -36,7 +36,7 @@ The current platform model keeps business logic in the control plane and uses No
 | `docs/` | Reader-facing documentation: overview, architecture, how-to guides, references, operations |
 | `sandbox-worker/` | Platform implementation: API server, agents, runtime modules, and tests |
 | `sandbox-tools/` | Tool definitions by category (python_run, bash_run, browser, office, etc.) |
-| `services/` | Infrastructure configuration: Consul, HAProxy, Nomad, PostgreSQL, Redis, MinIO, docker-compose |
+| `services/` | Infrastructure configuration grouped by `controller/`, `data/`, and `monitoring/` |
 | `docker/` | Dockerfiles for sandbox-base, fc-agent, and gui-agent images |
 | `tools/` | Operator tooling: Firecracker snapshot builder |
 | `examples/` | End-to-end examples: Nomad-based Python runtime sandbox smoke test |
@@ -122,7 +122,7 @@ make services-down
 | `fc-agent` | `agents.fc_agent:main` | Firecracker runtime worker |
 | `wasm-agent` | `agents.wasm_agent:main` | WASM runtime worker |
 | `gui-agent` | `agents.gui_agent:main` | GUI and browser runtime worker |
-| `services/` | docker-compose | Consul, HAProxy, Nomad, PostgreSQL, Redis, MinIO |
+| `services/` | docker-compose | Layered infra config under `controller/`, `data/`, and `monitoring/` |
 | `dashboard/` | — | Sandbox dashboard UI |
 
 ## Repository conventions

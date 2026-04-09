@@ -7,7 +7,7 @@ Static config tanpa service discovery. Backend di-hardcode.
 ### Local dev (semua service di localhost)
 
 ```bash
-haproxy -f infra/haproxy/baremetal/haproxy.cfg
+haproxy -f services/controller/haproxy/baremetal/haproxy.cfg
 ```
 
 ### Single-node server (ganti IP)

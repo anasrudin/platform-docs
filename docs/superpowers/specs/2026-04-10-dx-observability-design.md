@@ -50,18 +50,21 @@ services/
 services/
   data/
     docker-compose.yml          # postgres, redis, minio
+    minio/
+    postgres/
+    redis/
   controller/
-    docker-compose.yml          # consul, haproxy
+    docker-compose.yml          # consul
+    consul/
+    haproxy/
+    nomad/
+    scripts/
+    systemd/
   monitoring/
     docker-compose.yml          # jaeger (sekarang), prometheus+grafana (nanti)
     jaeger/
       config.yaml               # sampling rate, retention
   docker-compose.yml            # root — include semua via Docker Compose include
-  haproxy/
-  minio/
-  nomad/
-  scripts/
-  systemd/
 ```
 
 **Root compose** menggunakan Docker Compose `include` directive (Compose v2.20+):
@@ -116,7 +119,8 @@ services:
 
 networks:
   platform-net:
-    external: true
+    name: platform-net
+    driver: bridge
 ```
 
 Jaeger `all-in-one` menyimpan trace di memory — cukup untuk dev, zero external dependency.
@@ -291,7 +295,7 @@ Output dev mode:
 |---|---|
 | `services/docker-compose.yml` | Refactor ke root compose dengan `include` |
 | `services/data/docker-compose.yml` | Baru — postgres, redis, minio |
-| `services/controller/docker-compose.yml` | Baru — consul, haproxy |
+| `services/controller/docker-compose.yml` | Baru — consul; aset HAProxy berada di `services/controller/haproxy/` |
 | `services/monitoring/docker-compose.yml` | Baru — jaeger |
 | `services/monitoring/jaeger/config.yaml` | Baru — jaeger config |
 | `.env.example` | Baru — semua vars dari settings.py |

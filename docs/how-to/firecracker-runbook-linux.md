@@ -32,7 +32,7 @@ ls -la /dev/kvm   # recheck
 ```bash
 sudo apt-get update
 sudo apt-get install -y python3.12 python3.12-venv python3-pip \
-  curl jq build-essential
+  curl jq build-essential e2fsprogs
 ```
 
 **Install Docker + Docker Compose v2:**
@@ -75,11 +75,13 @@ curl -fL -o /tmp/firecracker.tgz \
   "https://github.com/firecracker-microvm/firecracker/releases/download/${FC_VERSION}/firecracker-${FC_VERSION}-${ARCH}.tgz"
 tar -xzf /tmp/firecracker.tgz -C /tmp
 sudo install /tmp/release-${FC_VERSION}-${ARCH}/firecracker-${FC_VERSION}-${ARCH} \
-  /usr/local/bin/firecracker
+  /usr/bin/firecracker
 sudo install /tmp/release-${FC_VERSION}-${ARCH}/jailer-${FC_VERSION}-${ARCH} \
-  /usr/local/bin/jailer
+  /usr/bin/jailer
 firecracker --version   # Firecracker v1.7.0
 ```
+
+> The repo helper scripts and runtime defaults currently expect the binary at `/usr/bin/firecracker`. If you prefer `/usr/local/bin`, create a symlink into `/usr/bin` before using `tools/snapshot-builder/`.
 
 **Install MinIO client mc:**
 
@@ -127,17 +129,19 @@ docker compose up -d
 
 > **Note:** Do not use `make infra-up` from `sandbox-worker/` — the Makefile target runs `docker compose up -d` relative to `sandbox-worker/` which has no compose file. Use the manual path above.
 
-Verify all three services are healthy:
+Verify the stack is healthy:
 
 ```bash
 # Still in services/
 docker compose ps
 ```
 
-Expected — all three show `healthy`:
+Expected — five services total. Data and controller services show `healthy`; jaeger has no healthcheck so it shows `Up` only:
 
 ```
 NAME        STATUS
+consul      Up (healthy)
+jaeger      Up
 minio       Up (healthy)
 postgres    Up (healthy)
 redis       Up (healthy)
@@ -173,6 +177,8 @@ Expected:
 }
 ```
 > The `pool_size` value reflects the `FC_POOL_SIZE` environment variable (default: `2`).
+>
+> **Known issue:** current `platform-api` startup still has VM-pool warmup wiring issues. If the process exits before `/health` is available, treat section 3 as the intended workflow and continue with sections 4-5 to validate snapshot artifacts directly.
 
 Troubleshoot: if MinIO is unreachable, confirm Docker is running and `docker compose ps` from `services/` shows port `9000->9000`.
 
@@ -181,6 +187,50 @@ Troubleshoot: if MinIO is unreachable, confirm Docker is running and `docker com
 ## 4. Build a Firecracker snapshot from scratch
 
 A real Firecracker snapshot captures full VM state: CPU registers, memory, and disk. Restoring from snapshot boots a VM in 20–80ms instead of a full kernel boot.
+
+Recommended for this repo: use the helper scripts in `tools/snapshot-builder/`. They match the current local artifact layout:
+- local files: `<out-dir>/<name>/state`, `mem`, `meta.json`
+- uploaded objects: `<name>/vmstate.bin`, `memory.bin`, `meta.json`
+
+Run from the repo root (`platform-docs/`):
+
+```bash
+tools/snapshot-builder/test/test-snapshot-builder.sh
+
+mkdir -p /tmp/snapshots/python-v1
+
+curl -fL -o /tmp/snapshots/vmlinux.bin \
+  "https://s3.amazonaws.com/spec.ccfc.min/img/quickstart_guide/x86_64/kernels/vmlinux.bin"
+
+sudo bash tools/snapshot-builder/build-rootfs.sh \
+  --name python-v1 \
+  --python 3.11 \
+  --size 1024 \
+  --out /tmp/snapshots/python-v1/rootfs.ext4
+
+bash tools/snapshot-builder/fc-snapshot.sh \
+  --name python-v1 \
+  --rootfs /tmp/snapshots/python-v1/rootfs.ext4 \
+  --kernel /tmp/snapshots/vmlinux.bin \
+  --out-dir /tmp/snapshots
+
+bash tools/snapshot-builder/upload-minio.sh \
+  --snapshot-dir /tmp/snapshots/python-v1 \
+  --name python-v1 \
+  --kernel /tmp/snapshots/vmlinux.bin \
+  --rootfs /tmp/snapshots/python-v1/rootfs.ext4 \
+  --endpoint http://localhost:9000
+```
+
+Equivalent Make targets from the repo root:
+
+```bash
+make snapshot-rootfs snapshot-create snapshot-upload
+```
+
+> `snapshot-create` writes local `state` and `mem` files under `/tmp/snapshots/python-v1/`. `upload-minio.sh` remaps them to `vmstate.bin` and `memory.bin` in MinIO.
+
+The manual Firecracker API flow below is still useful for debugging the hypervisor directly.
 
 **4a. Download kernel and rootfs**
 
@@ -260,7 +310,19 @@ curl -s -X PUT \
 
 Expected: HTTP 204 No Content (curl prints nothing on success). Wait 2 seconds for the kernel to boot.
 
-**4e. Create the snapshot**
+**4e. Pause the VM**
+
+```bash
+curl -s -X PATCH \
+  --unix-socket $FC_SOCKET \
+  "http://localhost/vm" \
+  -H "Content-Type: application/json" \
+  -d '{"state": "Paused"}'
+```
+
+Expected: HTTP 204 No Content (curl prints nothing on success).
+
+**4f. Create the snapshot**
 
 ```bash
 mkdir -p /tmp/python-v1
@@ -278,7 +340,7 @@ curl -s -X PUT \
 
 Expected: HTTP 204 No Content (curl prints nothing on success).
 
-**4f. Write metadata**
+**4g. Write metadata**
 
 ```bash
 cat > /tmp/python-v1/meta.json <<'EOF'
@@ -296,7 +358,7 @@ cat > /tmp/python-v1/meta.json <<'EOF'
 EOF
 ```
 
-**4g. Stop Firecracker**
+**4h. Stop Firecracker**
 
 ```bash
 kill $FC_PID
@@ -352,6 +414,8 @@ Expected (three objects, non-zero sizes):
 **5b. Test snapshot load via fc-agent**
 
 > **Known issue:** The `fc-agent` entry point currently fails to start because the `agents` package is not yet present in `src/`. Running `fc-agent` will produce `ModuleNotFoundError: No module named 'agents'`. Section 5 documents the intended workflow for when the package is available.
+>
+> **Current limitation:** there is no standalone HTTP endpoint that forces a named snapshot download independently of the VM pool startup path. Until `fc-agent` startup is repaired, the practical verification available today is `mc ls` for the uploaded objects plus local-cache inspection once the runtime path is fixed.
 
 Clear local cache to force a download:
 
