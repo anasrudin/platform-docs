@@ -122,3 +122,116 @@ Expected:
 ```
 
 Troubleshoot: if MinIO is unreachable, confirm Docker Desktop is running and `docker compose ps` shows port `9000->9000`.
+
+---
+
+## 4. Build a snapshot from scratch (sim mode)
+
+In sim mode there is no real VM. A "snapshot" is three files uploaded to MinIO:
+- `vmstate.bin` — dummy binary (placeholder for VM state)
+- `memory.bin` — dummy binary (placeholder for VM memory)
+- `meta.json` — JSON metadata the fc-agent reads on startup
+
+**4a. Create the MinIO bucket**
+
+```bash
+mc alias set local http://localhost:9000 minioadmin minioadmin
+mc mb local/platform-snapshots --ignore-existing
+```
+
+Expected: `Bucket created successfully` or `Bucket 'local/platform-snapshots' already exists`.
+
+**4b. Create the snapshot files locally**
+
+```bash
+mkdir -p /tmp/python-v1
+
+# Dummy binaries (real Firecracker would write actual VM state here)
+dd if=/dev/zero bs=1k count=4 2>/dev/null | gzip > /tmp/python-v1/vmstate.bin
+dd if=/dev/zero bs=1k count=4 2>/dev/null | gzip > /tmp/python-v1/memory.bin
+
+# Metadata that fc-agent reads
+cat > /tmp/python-v1/meta.json <<'EOF'
+{
+  "name": "python-v1",
+  "version": "3.12",
+  "kernel": "vmlinux-5.10",
+  "rootfs": "python-v1.ext4",
+  "vcpus": 2,
+  "mem_mib": 512,
+  "dry_run": true
+}
+EOF
+```
+
+**4c. Upload the snapshot to MinIO**
+
+```bash
+mc cp /tmp/python-v1/vmstate.bin local/platform-snapshots/python-v1/vmstate.bin
+mc cp /tmp/python-v1/memory.bin  local/platform-snapshots/python-v1/memory.bin
+mc cp /tmp/python-v1/meta.json   local/platform-snapshots/python-v1/meta.json
+```
+
+Verify upload:
+
+```bash
+mc ls local/platform-snapshots/python-v1/
+```
+
+Expected (three objects):
+
+```
+[...] vmstate.bin
+[...] memory.bin
+[...] meta.json
+```
+
+Troubleshoot: if `mc alias set` fails, check MinIO is up (`docker compose ps` from `services/`) and credentials match `minioadmin`/`minioadmin`.
+
+---
+
+## 5. Load an existing snapshot from MinIO
+
+`SnapshotStore.ensure()` downloads from MinIO to a local cache on first access, then serves from disk on subsequent requests. The cache dir is `SNAPSHOT_CACHE_DIR` (default `/var/sandbox/cache`).
+
+**5a. Start fc-agent with snapshot env vars**
+
+In a new terminal (from `sandbox-worker/`):
+
+```bash
+source .venv/bin/activate
+FC_MODE=sim \
+  SNAPSHOT_NAME=python-v1 \
+  SNAPSHOT_CACHE_DIR=/tmp/sandbox-cache \
+  MINIO_ENDPOINT=http://localhost:9000 \
+  MINIO_ACCESS_KEY=minioadmin \
+  MINIO_SECRET_KEY=minioadmin \
+  MINIO_BUCKET=platform-snapshots \
+  fc-agent
+```
+
+Expected log line on first start (structlog output):
+
+```
+snapshot not cached, downloading from MinIO  name=python-v1
+```
+
+On second start (cache hit):
+
+```
+snapshot cache hit  name=python-v1
+```
+
+**5b. Verify local cache**
+
+```bash
+ls /tmp/sandbox-cache/python-v1/
+```
+
+Expected:
+
+```
+memory.bin  meta.json  vmstate.bin
+```
+
+Troubleshoot: if download fails with an error about `mc` not found in PATH, the `SnapshotStore` falls back to HTTP download directly from `MINIO_ENDPOINT`. Ensure MinIO is reachable at `http://localhost:9000`.
