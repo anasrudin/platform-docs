@@ -11,6 +11,8 @@ NODE1_IP        ?= localhost
 
 .PHONY: help \
         services-up services-down services-status \
+        services-data services-controller services-monitoring \
+        setup \
         cluster-setup cluster-start cluster-status \
         snapshot-rootfs snapshot-create snapshot-upload snapshot-build \
         image-build image-push image-load \
@@ -74,10 +76,25 @@ help:
 
 # ── Services ──────────────────────────────────────────────────────────────────
 
+services-data:
+	@echo ">>> Starting data services (postgres, redis, minio)..."
+	docker network create platform-net 2>/dev/null || true
+	cd services && docker compose -f data/docker-compose.yml up -d
+
+services-controller:
+	@echo ">>> Starting controller services (consul)..."
+	docker network create platform-net 2>/dev/null || true
+	cd services && docker compose -f controller/docker-compose.yml up -d
+
+services-monitoring:
+	@echo ">>> Starting monitoring services (jaeger)..."
+	docker network create platform-net 2>/dev/null || true
+	cd services && docker compose -f monitoring/docker-compose.yml up -d
+
 services-up:
-	@echo ">>> Starting data + controller services..."
+	@echo ">>> Starting all services..."
+	docker network create platform-net 2>/dev/null || true
 	cd services && docker compose up -d
-	@echo ">>> Waiting for services to be healthy..."
 	@sleep 5
 	@$(MAKE) services-status
 
@@ -95,6 +112,21 @@ services-status:
 	@docker exec $$(docker ps -qf name=postgres) \
 		pg_isready -U postgres 2>/dev/null \
 		&& echo "  postgres: OK" || echo "  postgres: DOWN"
+
+setup:
+	@echo ">>> [1/4] Copying .env.example → sandbox-worker/.env (jika belum ada)..."
+	@[ -f sandbox-worker/.env ] || cp sandbox-worker/.env.example sandbox-worker/.env
+	@echo ">>> [2/4] Installing worker deps..."
+	cd sandbox-worker && uv venv .venv && uv pip install -e ".[dev]"
+	@echo ">>> [3/4] Starting data + monitoring services..."
+	$(MAKE) services-data services-monitoring
+	@echo ">>> [4/4] Checking service health..."
+	@sleep 5
+	@$(MAKE) services-status
+	@echo ""
+	@echo "Setup selesai. Langkah berikutnya:"
+	@echo "  make worker-run   — start platform API"
+	@echo "  open http://localhost:16686  — Jaeger UI"
 
 # ── Cluster ───────────────────────────────────────────────────────────────────
 
