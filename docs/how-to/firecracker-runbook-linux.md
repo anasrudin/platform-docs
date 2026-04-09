@@ -50,7 +50,7 @@ docker compose version    # v2.x
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
-source $HOME/.cargo/env   # or restart your shell
+export PATH="$HOME/.local/bin:$PATH"
 uv --version
 ```
 
@@ -84,7 +84,9 @@ firecracker --version   # Firecracker v1.7.0
 **Install MinIO client mc:**
 
 ```bash
-curl -fL https://dl.min.io/client/mc/release/linux-amd64/mc -o /tmp/mc
+ARCH=$(uname -m)
+MC_ARCH=$([ "$ARCH" = "aarch64" ] && echo "arm64" || echo "amd64")
+curl -fL "https://dl.min.io/client/mc/release/linux-${MC_ARCH}/mc" -o /tmp/mc
 sudo install /tmp/mc /usr/local/bin/mc
 mc --version
 ```
@@ -94,7 +96,7 @@ mc --version
 ## 2. Clone and install
 
 ```bash
-git clone <repo-url>
+git clone <repo-url> platform-docs
 cd platform-docs/sandbox-worker
 
 uv venv .venv
@@ -166,9 +168,12 @@ Expected:
   "status": "healthy",
   "version": "0.2.0",
   "services": {
-    "vm_pool": "healthy (pool_size=2)"
+    "vm_pool": "healthy (pool_size=N)"
   }
 }
 ```
+# N depends on FC_POOL_SIZE config (default: 2)
+
+> The `pool_size` value reflects the `FC_POOL_SIZE` environment variable (default: `2`).
 
 Troubleshoot: if MinIO is unreachable, confirm Docker is running and `docker compose ps` from `services/` shows port `9000->9000`.
