@@ -34,16 +34,16 @@ class TracingMiddleware(BaseHTTPMiddleware):
         }
 
         with tracer.start_span("http.request", attrs) as span:
-            # Bind trace_id to structlog for the duration of this request
-            structlog.contextvars.bind_contextvars(trace_id=trace_id)
-            try:
-                response = await call_next(request)
-                span.set_attribute("http.status_code", response.status_code)
-                return response
-            except Exception as exc:
-                span.record_exception(exc)
-                raise
-            finally:
-                duration_ms = int((time.monotonic() - start) * 1000)
-                span.set_attribute("http.duration_ms", duration_ms)
-                structlog.contextvars.clear_contextvars()
+            # bound_contextvars scopes trace_id to this middleware only,
+            # so it doesn't clobber request_id set by RequestIDMiddleware.
+            with structlog.contextvars.bound_contextvars(trace_id=trace_id):
+                try:
+                    response = await call_next(request)
+                    span.set_attribute("http.status_code", response.status_code)
+                    return response
+                except Exception as exc:
+                    span.record_exception(exc)
+                    raise
+                finally:
+                    duration_ms = int((time.monotonic() - start) * 1000)
+                    span.set_attribute("http.duration_ms", duration_ms)

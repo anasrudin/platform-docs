@@ -39,3 +39,23 @@ class TestRequestIDMiddleware:
         client = TestClient(_make_app())
         ids = {client.get("/ping").headers["x-request-id"] for _ in range(5)}
         assert len(ids) == 5  # semua unik
+
+    def test_request_id_bound_to_structlog_context(self):
+        """request_id harus tersedia di structlog context selama request."""
+        from structlog.contextvars import get_contextvars
+
+        bound: dict = {}
+
+        from api.middleware.request_id import RequestIDMiddleware
+        app = FastAPI()
+        app.add_middleware(RequestIDMiddleware)
+
+        @app.get("/ctx")
+        def ctx():
+            bound.update(get_contextvars())
+            return {"ok": True}
+
+        client = TestClient(app)
+        resp = client.get("/ctx")
+        assert "request_id" in bound
+        assert bound["request_id"] == resp.headers["x-request-id"]
