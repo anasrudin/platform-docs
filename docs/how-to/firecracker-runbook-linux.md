@@ -392,3 +392,231 @@ memory.bin  meta.json  vmstate.bin
 ```
 
 Troubleshoot: if download fails, `SnapshotStore` falls back from `mc mirror` to direct HTTP download from `MINIO_ENDPOINT`. Ensure MinIO is reachable at `http://localhost:9000`.
+
+---
+
+## 6. Deploy the Nomad job
+
+**6a. Start a local single-node Nomad dev cluster**
+
+In a new terminal:
+
+```bash
+sudo nomad agent -dev \
+  -bind=0.0.0.0 \
+  -network-interface=eth0   # replace with your network interface name
+```
+
+Find your interface name if unsure:
+
+```bash
+ip route get 1 | awk '{print $5; exit}'
+```
+
+Wait for `Nomad agent started!` in output, then verify:
+
+```bash
+nomad node status
+```
+
+Expected: one node with status `ready`.
+
+**6b. Adjust the job for local dev**
+
+The production job at `services/controller/nomad/jobs/sandbox-worker.nomad` uses Docker driver and a container registry. For local dev with a real binary, create a local override.
+
+> Run from the repo root (`platform-docs/`), not from inside `sandbox-worker/`.
+
+```bash
+VENV_PATH=$(pwd)/sandbox-worker/.venv
+
+cat > /tmp/sandbox-worker-linux.nomad <<EOF
+job "sandbox-worker-linux" {
+  datacenters = ["dc1"]
+  type        = "service"
+
+  group "fc-agent" {
+    count = 1
+
+    task "fc-agent" {
+      driver = "raw_exec"
+
+      config {
+        command = "${VENV_PATH}/bin/fc-agent"
+      }
+
+      env {
+        FC_MODE            = "real"
+        SNAPSHOT_NAME      = "python-v1"
+        SNAPSHOT_CACHE_DIR = "/tmp/sandbox-cache"
+        MINIO_ENDPOINT     = "http://127.0.0.1:9000"
+        MINIO_ACCESS_KEY   = "minioadmin"
+        MINIO_SECRET_KEY   = "minioadmin"
+        MINIO_BUCKET       = "platform-snapshots"
+      }
+
+      resources {
+        cpu    = 2000
+        memory = 4096
+      }
+    }
+  }
+}
+EOF
+```
+
+> **Known issue:** `fc-agent` currently fails to start (missing `agents` module — see section 5 warning). The Nomad allocation will show `failed`. This section documents the intended deployment workflow.
+
+**6c. Run the job**
+
+```bash
+nomad job run /tmp/sandbox-worker-linux.nomad
+```
+
+Expected:
+
+```
+==> Monitoring evaluation "..."
+    Allocation "..." created: node "...", group "fc-agent"
+    Evaluation status changed: "pending" -> "complete"
+==> Evaluation complete
+```
+
+**6d. Check allocation status**
+
+```bash
+nomad job status sandbox-worker-linux
+```
+
+Expected: `Status = running` (or `failed` if fc-agent module issue is not resolved).
+
+View logs:
+
+```bash
+ALLOC_ID=$(nomad job status sandbox-worker-linux | awk '/^Allocations/{found=1; next} found && ($6=="running" || $6=="failed"){print $1; exit}')
+nomad alloc logs $ALLOC_ID fc-agent
+```
+
+Troubleshoot: if `raw_exec` is disabled, it is enabled by default in `-dev` mode. If running with a real Nomad config, add `plugin "raw_exec" { config { enabled = true } }` to your Nomad agent config file. Also ensure `/dev/kvm` is accessible by the Nomad task user.
+
+---
+
+## 7. Run Python code end-to-end
+
+> **Known issue:** `POST /execute` currently fails with HTTP 500 due to a code bug: `ExecutionService.execute()` calls `vm.run(job)` but `FirecrackerVM` only exposes `.execute(tool, input_data)`. The steps below document the intended workflow. To test the API layer without the VM, use `POST /sessions` and `GET /health` which do not invoke the VM pool.
+
+> **Note:** `platform-api` runs its own in-process VM lifecycle manager in dev mode. It does not route requests through the Nomad-deployed fc-agent at runtime.
+
+**7a. Ensure platform-api is running**
+
+From section 3, `platform-api` should be running with `FC_MODE=real`. If not, restart it:
+
+```bash
+cd sandbox-worker
+source .venv/bin/activate
+FC_MODE=real \
+  SNAPSHOT_NAME=python-v1 \
+  SNAPSHOT_CACHE_DIR=/tmp/sandbox-cache \
+  MINIO_ENDPOINT=http://localhost:9000 \
+  MINIO_ACCESS_KEY=minioadmin \
+  MINIO_SECRET_KEY=minioadmin \
+  MINIO_BUCKET=platform-snapshots \
+  platform-api
+```
+
+**7b. Create a session**
+
+```bash
+SESSION=$(curl -s -X POST http://localhost:8080/sessions \
+  -H "Content-Type: application/json" \
+  -d '{"runtime": "microvm"}' | jq -r '.session_id')
+echo "Session: $SESSION"
+```
+
+Expected: `Session: <uuid>` (e.g. `3f7b2c1d-e4f5-...`)
+
+**7c. Execute Python code**
+
+```bash
+curl -s -X POST http://localhost:8080/execute \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"session_id\": \"$SESSION\",
+    \"tool\": \"python_run\",
+    \"input\": {\"code\": \"print('hello from real VM')\"}
+  }" | jq
+```
+
+> **Current behavior (before bug fix):** Returns HTTP 500 with `AttributeError: 'FirecrackerVM' object has no attribute 'run'`.
+>
+> **Intended behavior (after bug fix):** In real mode, the request restores a VM from snapshot, executes the Python code inside the guest, and returns:
+
+```json
+{
+  "job_id": "...",
+  "session_id": "...",
+  "status": "completed",
+  "output": "hello from real VM\n",
+  "error_message": "",
+  "duration_ms": 45
+}
+```
+
+Note: `duration_ms` reflects real snapshot-restore boot time (20–80ms typical).
+
+**7d. Execute with continuous snapshot mode**
+
+Continuous mode saves VM state after each execution. Subsequent runs restore from the previous state, preserving installed packages and in-memory variables.
+
+```bash
+curl -s -X POST http://localhost:8080/execute \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"session_id\": \"$SESSION\",
+    \"tool\": \"python_run\",
+    \"snapshot_mode\": \"continuous\",
+    \"input\": {\"code\": \"x = 42; print(f'x={x}')\"}
+  }" | jq
+```
+
+---
+
+## 8. Cleanup
+
+Stop the Nomad job:
+
+```bash
+nomad job stop -purge sandbox-worker-linux 2>/dev/null || true
+```
+
+Stop `platform-api` (Ctrl+C in its terminal, or):
+
+```bash
+pkill -f "platform-api"
+```
+
+Stop infrastructure:
+
+```bash
+cd services
+docker compose down
+```
+
+Stop the Nomad dev agent (Ctrl+C in its terminal, or):
+
+```bash
+sudo pkill nomad
+rm -rf /tmp/nomad
+```
+
+Remove local snapshot cache and temp files:
+
+```bash
+rm -rf /tmp/sandbox-cache /tmp/python-v1 /tmp/fc-assets /tmp/sandbox-worker-linux.nomad
+```
+
+Remove MinIO snapshot:
+
+```bash
+mc rm --recursive --force local/platform-snapshots/python-v1
+```
