@@ -8,7 +8,7 @@ from datetime import datetime
 import structlog
 
 from adapters.tracing import get_tracer
-from models.session import Tier
+from models.session import SnapshotMode, Tier
 
 log = structlog.get_logger()
 
@@ -19,13 +19,14 @@ class Session:
     runtime: Tier
     created_at: datetime = field(default_factory=datetime.utcnow)
     status: str = "active"
+    snapshot_mode: SnapshotMode = SnapshotMode.CLEAN
 
 
 class SessionService:
     def __init__(self) -> None:
         self._sessions: dict[str, Session] = {}
 
-    async def create(self, runtime_str: str = "firecracker") -> dict:
+    async def create(self, runtime_str: str = "firecracker", snapshot_mode_str: str = "clean") -> dict:
         tracer = get_tracer()
         with tracer.start_span("service.session.create", {"runtime": runtime_str}) as span:
             try:
@@ -33,15 +34,22 @@ class SessionService:
             except ValueError:
                 tier = Tier.FIRECRACKER
 
-            sess = Session(id=str(uuid.uuid4()), runtime=tier)
+            try:
+                mode = SnapshotMode(snapshot_mode_str)
+            except ValueError:
+                mode = SnapshotMode.CLEAN
+
+            sess = Session(id=str(uuid.uuid4()), runtime=tier, snapshot_mode=mode)
             self._sessions[sess.id] = sess
             span.set_attribute("session_id", sess.id)
-            log.info("session created", session_id=sess.id, runtime=tier.value)
+            log.info("session created", session_id=sess.id, runtime=tier.value,
+                     snapshot_mode=mode.value)
 
             return {
                 "session_id": sess.id,
                 "runtime": tier.value,
                 "status": sess.status,
+                "snapshot_mode": mode.value,
             }
 
     def get(self, session_id: str) -> Session:

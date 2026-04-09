@@ -10,6 +10,12 @@ class Tier(str, Enum):
     WASM = "wasm"
     MICROVM = "microvm"
     GUI = "gui"
+    FIRECRACKER = "firecracker"
+
+
+class SnapshotMode(str, Enum):
+    CLEAN = "clean"
+    CONTINUOUS = "continuous"
 
 
 @dataclass
@@ -19,11 +25,13 @@ class Session:
     status: str
     created_at: datetime
     updated_at: datetime
+    snapshot_mode: SnapshotMode = SnapshotMode.CLEAN
 
 
 @dataclass
 class CreateSessionRequest:
     runtime: str = "wasm"
+    snapshot_mode: str = "clean"
 
 
 @dataclass
@@ -31,6 +39,7 @@ class CreateSessionResponse:
     session_id: str
     runtime: Tier
     status: str
+    snapshot_mode: SnapshotMode = SnapshotMode.CLEAN
 
 
 @dataclass
