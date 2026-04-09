@@ -6,6 +6,7 @@ Mode selection:
   1. FC_MODE env var ("real" | "sim")
   2. Presence of /dev/kvm (auto-detect: kvm → real, no kvm → sim)
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -25,6 +26,7 @@ log = structlog.get_logger()
 
 
 # ── TAP / MAC helpers ──────────────────────────────────────────────────────────
+
 
 def make_tap_name(node_id: str, vm_id: str) -> str:
     """Return a Linux TAP device name for a given node and VM.
@@ -129,8 +131,11 @@ class Runtime:
     def _warmup(self) -> None:
         try:
             self._pool.warmup()
-            log.info("VM pool ready", size=self._cfg.pool_size,
-                     snapshot=self._cfg.snapshot_name)
+            log.info(
+                "VM pool ready",
+                size=self._cfg.pool_size,
+                snapshot=self._cfg.snapshot_name,
+            )
         except Exception as exc:
             log.error("VM pool warmup failed, falling back to sim mode", err=str(exc))
             self._mode = "sim"
@@ -148,7 +153,9 @@ class Runtime:
         if self._mode == "sim":
             return
         if not os.path.exists(self._cfg.firecracker_bin):
-            raise RuntimeError(f"firecracker binary not found: {self._cfg.firecracker_bin}")
+            raise RuntimeError(
+                f"firecracker binary not found: {self._cfg.firecracker_bin}"
+            )
 
     def execute(self, job: Job) -> RuntimeResult:
         if self._mode == "sim":
@@ -173,8 +180,14 @@ class Runtime:
             self._pool.release(vm)
 
         duration_ms = int((time.monotonic() - start) * 1000)
-        log.info("fc execute done", job_id=job.id, tool=job.tool,
-                 exit_code=resp.exit_code, duration_ms=duration_ms, vm_id=vm.id)
+        log.info(
+            "fc execute done",
+            job_id=job.id,
+            tool=job.tool,
+            exit_code=resp.exit_code,
+            duration_ms=duration_ms,
+            vm_id=vm.id,
+        )
 
         return RuntimeResult(
             stdout=resp.stdout,
@@ -209,7 +222,9 @@ class Runtime:
             },
         }
 
-        log.info("fc sim complete", job_id=job.id, tool=job.tool, duration_ms=duration_ms)
+        log.info(
+            "fc sim complete", job_id=job.id, tool=job.tool, duration_ms=duration_ms
+        )
         return RuntimeResult(stdout=json.dumps(result, indent=2), exit_code=0)
 
     def _simulate_tool_output(self, tool: str, input_data: dict) -> object:

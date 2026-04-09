@@ -4,15 +4,14 @@ Mirrors vsock_linux.go / vsock_stub.go behaviour:
 - On Linux with AF_VSOCK: real vsock dial
 - On macOS / no AF_VSOCK: raises OSError (stub)
 """
+
 import socket
-import sys
 
 import pytest
 
 from sandbox_platform.runtime.firecracker.guest import (
     GUEST_AGENT_PORT,
     GuestClient,
-    GuestResponse,
     _dial_vsock,
 )
 

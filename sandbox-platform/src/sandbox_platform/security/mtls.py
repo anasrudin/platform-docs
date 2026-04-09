@@ -26,6 +26,7 @@ MTLS_KEY_FILE   — server private key  (default: /etc/sandbox/certs/server.key)
 MTLS_CA_FILE    — CA certificate for verifying clients
                   (default: /etc/sandbox/certs/ca.crt)
 """
+
 from __future__ import annotations
 
 import os
@@ -33,7 +34,6 @@ import ssl
 from collections.abc import Callable
 
 import structlog
-from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
@@ -45,6 +45,7 @@ _DEFAULT_CA = "/etc/sandbox/certs/ca.crt"
 
 
 # ── SSLContext factory ─────────────────────────────────────────────────────────
+
 
 def create_mtls_context(
     cert_file: str,
@@ -68,6 +69,7 @@ def create_mtls_context(
 
 
 # ── Certificate hot-reload ─────────────────────────────────────────────────────
+
 
 class CertManager:
     """Holds an SSLContext and allows zero-downtime certificate rotation.
@@ -155,6 +157,7 @@ class MTLSMiddleware:
 
 
 # ── Environment config ─────────────────────────────────────────────────────────
+
 
 def mtls_config_from_env() -> dict:
     """Return mTLS settings read from environment variables."""

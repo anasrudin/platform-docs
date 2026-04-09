@@ -5,6 +5,7 @@ Environment variables:
   CONSUL_PORT   — Consul agent HTTP port (default: 8500)
   CONSUL_TOKEN  — ACL token (default: empty / no auth)
 """
+
 from __future__ import annotations
 
 import os

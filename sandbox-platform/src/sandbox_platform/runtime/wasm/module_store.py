@@ -2,6 +2,7 @@
 
 Mirrors runtime/wasm/module_store.go.
 """
+
 from __future__ import annotations
 
 import os
@@ -61,14 +62,24 @@ class ModuleStore:
             raise FileNotFoundError("mc not found in PATH")
         alias = f"wasm-dl-{int(time.time() * 1e9)}"
         subprocess.run(
-            [mc, "alias", "set", alias, self._endpoint,
-             self._access_key, self._secret_key, "--quiet"],
-            check=True, capture_output=True,
+            [
+                mc,
+                "alias",
+                "set",
+                alias,
+                self._endpoint,
+                self._access_key,
+                self._secret_key,
+                "--quiet",
+            ],
+            check=True,
+            capture_output=True,
         )
         try:
             subprocess.run(
                 [mc, "cp", "--quiet", f"{alias}/{key}", dest],
-                check=True, capture_output=True,
+                check=True,
+                capture_output=True,
             )
         finally:
             subprocess.run([mc, "alias", "remove", alias], capture_output=True)

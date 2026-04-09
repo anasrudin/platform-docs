@@ -1,21 +1,19 @@
 """Unit tests for sandbox_platform.scaler.scaler.Scaler background loop."""
+
 from __future__ import annotations
 
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from sandbox_platform.scaler.metrics import AggregateMetrics, NodeMetrics, aggregate
-from sandbox_platform.scaler.policy import ScaleAction, ScalingPolicy
+from sandbox_platform.scaler.policy import ScalingPolicy
 from sandbox_platform.scaler.scaler import Scaler
 
 
 def _metrics_for(utilization: float, node_count: int = 2) -> AggregateMetrics:
-    nodes = [
-        NodeMetrics(f"n{i}", utilization, 0.0, 0.0, 0)
-        for i in range(node_count)
-    ]
+    nodes = [NodeMetrics(f"n{i}", utilization, 0.0, 0.0, 0) for i in range(node_count)]
     return aggregate(nodes)
 
 
@@ -40,8 +38,10 @@ class TestScalerActions:
 
         collector = MagicMock()
         collector.collect = AsyncMock(
-            return_value=[NodeMetrics("n1", 0.9, 0.0, 0.0, 0),
-                          NodeMetrics("n2", 0.9, 0.0, 0.0, 0)]
+            return_value=[
+                NodeMetrics("n1", 0.9, 0.0, 0.0, 0),
+                NodeMetrics("n2", 0.9, 0.0, 0.0, 0),
+            ]
         )
 
         scaler = Scaler(
@@ -58,7 +58,12 @@ class TestScalerActions:
 
         nomad.scale_job.assert_awaited_once()
         call_kwargs = nomad.scale_job.call_args
-        assert call_kwargs.kwargs.get("count", call_kwargs.args[2] if len(call_kwargs.args) > 2 else None) == 3
+        assert (
+            call_kwargs.kwargs.get(
+                "count", call_kwargs.args[2] if len(call_kwargs.args) > 2 else None
+            )
+            == 3
+        )
 
     @pytest.mark.asyncio
     async def test_scale_down_calls_nomad(self):

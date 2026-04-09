@@ -2,6 +2,7 @@
 
 Mirrors internal/artifacts/store.go.
 """
+
 from __future__ import annotations
 
 import io
@@ -60,7 +61,9 @@ class Store:
 
         if self._cfg.local_dir:
             self._write_local(key, src)
-            log.info("artifact uploaded to local store", key=key, dir=self._cfg.local_dir)
+            log.info(
+                "artifact uploaded to local store", key=key, dir=self._cfg.local_dir
+            )
             return key
 
         # Buffer to a temp file, then push via mc.
@@ -116,14 +119,30 @@ class Store:
 
         alias = f"art-init-{int(time.time() * 1e9)}"
         subprocess.run(
-            [mc, "alias", "set", alias, self._cfg.endpoint,
-             self._cfg.access_key, self._cfg.secret_key, "--quiet"],
-            check=True, capture_output=True,
+            [
+                mc,
+                "alias",
+                "set",
+                alias,
+                self._cfg.endpoint,
+                self._cfg.access_key,
+                self._cfg.secret_key,
+                "--quiet",
+            ],
+            check=True,
+            capture_output=True,
         )
         try:
             subprocess.run(
-                [mc, "mb", "--ignore-existing", "--quiet", f"{alias}/{self._cfg.bucket}"],
-                check=True, capture_output=True,
+                [
+                    mc,
+                    "mb",
+                    "--ignore-existing",
+                    "--quiet",
+                    f"{alias}/{self._cfg.bucket}",
+                ],
+                check=True,
+                capture_output=True,
             )
         finally:
             subprocess.run([mc, "alias", "remove", alias], capture_output=True)
@@ -137,9 +156,18 @@ class Store:
             raise FileNotFoundError("mc not found in PATH")
         alias = f"art-{int(time.time() * 1e9)}"
         subprocess.run(
-            [mc, "alias", "set", alias, self._cfg.endpoint,
-             self._cfg.access_key, self._cfg.secret_key, "--quiet"],
-            check=True, capture_output=True,
+            [
+                mc,
+                "alias",
+                "set",
+                alias,
+                self._cfg.endpoint,
+                self._cfg.access_key,
+                self._cfg.secret_key,
+                "--quiet",
+            ],
+            check=True,
+            capture_output=True,
         )
         return mc, alias
 
@@ -148,7 +176,8 @@ class Store:
         try:
             subprocess.run(
                 [mc, "cp", "--quiet", local_path, f"{alias}/{self._cfg.bucket}/{key}"],
-                check=True, capture_output=True,
+                check=True,
+                capture_output=True,
             )
         finally:
             subprocess.run([mc, "alias", "remove", alias], capture_output=True)
@@ -158,13 +187,15 @@ class Store:
         try:
             subprocess.run(
                 [mc, "cp", "--quiet", f"{alias}/{self._cfg.bucket}/{key}", dest],
-                check=True, capture_output=True,
+                check=True,
+                capture_output=True,
             )
         finally:
             subprocess.run([mc, "alias", "remove", alias], capture_output=True)
 
     def _http_get(self, url: str, dest: str) -> None:
         import urllib.request
+
         with urllib.request.urlopen(url) as resp:  # noqa: S310
             if resp.status != 200:
                 raise RuntimeError(f"HTTP {resp.status}")
@@ -186,6 +217,7 @@ class Store:
 
 
 # ── Module-level helpers ───────────────────────────────────────────────────────
+
 
 def mc_available() -> bool:
     """Report whether the MinIO client is available in PATH."""

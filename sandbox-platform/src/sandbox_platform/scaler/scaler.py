@@ -16,6 +16,7 @@ Usage (in FastAPI lifespan)::
     scaler.stop()
     await task
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -23,7 +24,11 @@ import time
 
 import structlog
 
-from sandbox_platform.scaler.metrics import AggregateMetrics, MetricsCollector, aggregate
+from sandbox_platform.scaler.metrics import (
+    AggregateMetrics,
+    MetricsCollector,
+    aggregate,
+)
 from sandbox_platform.scaler.nomad import NomadClient
 from sandbox_platform.scaler.policy import ScalingPolicy, evaluate
 
@@ -40,8 +45,8 @@ class Scaler:
         nomad: NomadClient,
         job_id: str,
         group: str,
-        nodes: list[tuple[str, str]],   # [(node_id, health_url), ...]
-        interval: float = 60.0,         # seconds between ticks
+        nodes: list[tuple[str, str]],  # [(node_id, health_url), ...]
+        interval: float = 60.0,  # seconds between ticks
     ) -> None:
         self._policy = policy
         self._collector = collector
@@ -56,8 +61,12 @@ class Scaler:
 
     async def run(self) -> None:
         """Main loop. Runs until stop() is called."""
-        log.info("scaler: started", job=self._job_id, group=self._group,
-                 interval=self._interval)
+        log.info(
+            "scaler: started",
+            job=self._job_id,
+            group=self._group,
+            interval=self._interval,
+        )
         while not self._stop_event.is_set():
             try:
                 await self._tick()
@@ -102,7 +111,8 @@ class Scaler:
 
         if action.action == "scale_up":
             await self._nomad.scale_job(
-                self._job_id, self._group,
+                self._job_id,
+                self._group,
                 count=action.target_count,
                 reason=action.reason,
             )
@@ -112,7 +122,8 @@ class Scaler:
             # Nomad drains gracefully via the job's migrate stanza before
             # reducing the allocation count.
             await self._nomad.scale_job(
-                self._job_id, self._group,
+                self._job_id,
+                self._group,
                 count=action.target_count,
                 reason=action.reason,
             )

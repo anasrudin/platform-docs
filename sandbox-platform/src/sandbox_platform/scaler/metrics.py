@@ -5,6 +5,7 @@ NodeMetrics. cpu_percent and memory_percent default to 0.0 — they will be
 populated once agents expose those fields; the scaler policy works today using
 pool_utilization alone.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -18,9 +19,9 @@ log = structlog.get_logger()
 @dataclass
 class NodeMetrics:
     node_id: str
-    pool_utilization: float   # 0.0–1.0
-    cpu_percent: float        # 0.0–100.0 (0 until agents expose it)
-    memory_percent: float     # 0.0–100.0 (0 until agents expose it)
+    pool_utilization: float  # 0.0–1.0
+    cpu_percent: float  # 0.0–100.0 (0 until agents expose it)
+    memory_percent: float  # 0.0–100.0 (0 until agents expose it)
     active_sessions: int
 
 
@@ -84,19 +85,24 @@ class MetricsCollector:
                 try:
                     resp = await client.get(health_url, timeout=5.0)
                     if resp.status_code != 200:
-                        log.warning("metrics: node unhealthy", node=node_id,
-                                    status=resp.status_code)
+                        log.warning(
+                            "metrics: node unhealthy",
+                            node=node_id,
+                            status=resp.status_code,
+                        )
                         continue
                     data = resp.json()
                     pool_size = int(data.get("pool_size", 0))
                     utilization = min(pool_size / self._max_pool, 1.0)
-                    results.append(NodeMetrics(
-                        node_id=node_id,
-                        pool_utilization=utilization,
-                        cpu_percent=float(data.get("cpu_percent", 0.0)),
-                        memory_percent=float(data.get("memory_percent", 0.0)),
-                        active_sessions=int(data.get("active_sessions", 0)),
-                    ))
+                    results.append(
+                        NodeMetrics(
+                            node_id=node_id,
+                            pool_utilization=utilization,
+                            cpu_percent=float(data.get("cpu_percent", 0.0)),
+                            memory_percent=float(data.get("memory_percent", 0.0)),
+                            active_sessions=int(data.get("active_sessions", 0)),
+                        )
+                    )
                 except Exception as exc:
                     log.warning("metrics: node unreachable", node=node_id, err=str(exc))
 

@@ -1,8 +1,8 @@
 """Unit tests for sandbox_platform.router."""
-from unittest.mock import MagicMock, patch
+
+from unittest.mock import MagicMock
 from datetime import datetime, timezone
 
-import pytest
 
 from sandbox_platform.router.router import Router
 from sandbox_platform.router.rules import default_rules
@@ -15,16 +15,23 @@ def _make_queue_client(result: RuntimeResult | None = None, timeout: bool = Fals
     if timeout:
         qc.wait_for_job_result.side_effect = TimeoutError("timeout")
     else:
-        qc.wait_for_job_result.return_value = result or RuntimeResult(stdout="ok", exit_code=0)
+        qc.wait_for_job_result.return_value = result or RuntimeResult(
+            stdout="ok", exit_code=0
+        )
     return qc
 
 
 def _make_job(tool: str = "echo") -> Job:
     now = datetime.now(timezone.utc)
     return Job(
-        id="j1", session_id="s1", tool=tool,
-        tier=Tier.WASM, input={"x": 1}, status=JobStatus.PENDING,
-        created_at=now, updated_at=now,
+        id="j1",
+        session_id="s1",
+        tool=tool,
+        tier=Tier.WASM,
+        input={"x": 1},
+        status=JobStatus.PENDING,
+        created_at=now,
+        updated_at=now,
     )
 
 
@@ -100,6 +107,7 @@ class TestRouter:
 
     def test_thread_safety_register_resolve(self):
         import threading
+
         qc = _make_queue_client()
         router = Router(qc)
         errors = []

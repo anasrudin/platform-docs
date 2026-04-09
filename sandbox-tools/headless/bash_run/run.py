@@ -40,11 +40,13 @@ def main():
             text=True,
             timeout=timeout,
         )
-        out({
-            "stdout":    result.stdout,
-            "stderr":    result.stderr,
-            "exit_code": result.returncode,
-        })
+        out(
+            {
+                "stdout": result.stdout,
+                "stderr": result.stderr,
+                "exit_code": result.returncode,
+            }
+        )
     except subprocess.TimeoutExpired:
         out({"stdout": "", "stderr": "timeout exceeded", "exit_code": -1})
     except Exception as e:

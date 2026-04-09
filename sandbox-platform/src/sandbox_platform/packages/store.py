@@ -17,6 +17,7 @@ Environment variables:
   MINIO_SECRET_KEY      (default: minioadmin)
   PACKAGES_LOCAL_DIR    – when set, use local FS instead of MinIO
 """
+
 from __future__ import annotations
 
 import json
@@ -86,7 +87,9 @@ class PackageStore:
             return self._sim_install(name, resolved_version, key)
 
         return self._pip_install(
-            name, resolved_version, key,
+            name,
+            resolved_version,
+            key,
             proxy_url=proxy_url,
             timeout_seconds=timeout_seconds,
             extra_deps=extra_dependencies or [],
@@ -153,9 +156,13 @@ class PackageStore:
         spec = f"{name}=={version}" if version != "latest" else name
         with tempfile.TemporaryDirectory(prefix="pkg-") as tmp:
             cmd = [
-                sys.executable, "-m", "pip", "download",
+                sys.executable,
+                "-m",
+                "pip",
+                "download",
                 "--no-deps",
-                "--dest", tmp,
+                "--dest",
+                tmp,
                 spec,
             ]
             if proxy_url:
@@ -172,7 +179,12 @@ class PackageStore:
             wheel_path = wheels[0]
             stored_key = self._store_wheel(name, version, wheel_path)
 
-        meta = {"name": name, "version": version, "key": stored_key, "status": "installed"}
+        meta = {
+            "name": name,
+            "version": version,
+            "key": stored_key,
+            "status": "installed",
+        }
         log.info("packages: installed", name=name, version=version, key=stored_key)
         return meta
 
@@ -184,15 +196,30 @@ class PackageStore:
             raise FileNotFoundError("mc not found; cannot store wheel in MinIO")
         alias = f"pkg-{os.getpid()}"
         subprocess.run(
-            [mc, "alias", "set", alias, self._endpoint,
-             self._access_key, self._secret_key, "--quiet"],
-            check=True, capture_output=True,
+            [
+                mc,
+                "alias",
+                "set",
+                alias,
+                self._endpoint,
+                self._access_key,
+                self._secret_key,
+                "--quiet",
+            ],
+            check=True,
+            capture_output=True,
         )
         try:
             subprocess.run(
-                [mc, "cp", "--quiet", str(wheel_path),
-                 f"{alias}/{self._bucket}/{key}/wheel.whl"],
-                check=True, capture_output=True,
+                [
+                    mc,
+                    "cp",
+                    "--quiet",
+                    str(wheel_path),
+                    f"{alias}/{self._bucket}/{key}/wheel.whl",
+                ],
+                check=True,
+                capture_output=True,
             )
         finally:
             subprocess.run([mc, "alias", "remove", alias], capture_output=True)
@@ -203,8 +230,11 @@ class PackageStore:
         return []
 
     def _delete_minio(self, name: str, version: str) -> None:
-        log.warning("packages: MinIO delete not implemented in sim scope",
-                    name=name, version=version)
+        log.warning(
+            "packages: MinIO delete not implemented in sim scope",
+            name=name,
+            version=version,
+        )
 
     # ── Helpers ────────────────────────────────────────────────────────────────
 

@@ -3,16 +3,14 @@
 Mirrors runtime/firecracker/vm.go.
 Each VM is single-use: restored from snapshot, used once, then destroyed.
 """
+
 from __future__ import annotations
 
 import json
 import os
 import socket
 import subprocess
-import tempfile
 import time
-import urllib.request
-from dataclasses import dataclass
 from enum import IntEnum
 from pathlib import Path
 
@@ -115,19 +113,25 @@ class FirecrackerVM:
 
     def _restore(self, snap: SnapshotPaths, cid: int) -> None:
         try:
-            self._api_put("/vsock", {
-                "guest_cid": cid,
-                "uds_path": f"/tmp/fc-vsock-{self.id}.sock",
-            })
+            self._api_put(
+                "/vsock",
+                {
+                    "guest_cid": cid,
+                    "uds_path": f"/tmp/fc-vsock-{self.id}.sock",
+                },
+            )
         except Exception as exc:
             log.warning("vsock setup failed (non-fatal in dev mode)", err=str(exc))
 
-        self._api_put("/snapshot/load", {
-            "snapshot_path": snap.state_file,
-            "mem_file_path": snap.mem_file,
-            "backend_type": "File",
-            "enable_diff_snapshots": False,
-        })
+        self._api_put(
+            "/snapshot/load",
+            {
+                "snapshot_path": snap.state_file,
+                "mem_file_path": snap.mem_file,
+                "backend_type": "File",
+                "enable_diff_snapshots": False,
+            },
+        )
 
 
 def new_vm(
@@ -139,6 +143,7 @@ def new_vm(
 ) -> FirecrackerVM:
     """Start a Firecracker process and restore from snapshot."""
     import uuid as _uuid
+
     vm_id = _uuid.uuid4().hex[:8]
     api_sock = os.path.join(work_dir, f"fc-{vm_id}.sock")
     log_path = os.path.join(work_dir, f"fc-{vm_id}.log")
@@ -146,7 +151,15 @@ def new_vm(
     Path(work_dir).mkdir(parents=True, exist_ok=True)
 
     proc = subprocess.Popen(
-        [firecracker_bin, "--api-sock", api_sock, "--log-path", log_path, "--level", "Error"],
+        [
+            firecracker_bin,
+            "--api-sock",
+            api_sock,
+            "--log-path",
+            log_path,
+            "--level",
+            "Error",
+        ],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )

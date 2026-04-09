@@ -1,10 +1,10 @@
 """Unit tests for sandbox_platform.security.mtls."""
+
 from __future__ import annotations
 
 import ssl
 from unittest.mock import MagicMock, patch
 
-import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -18,12 +18,15 @@ from sandbox_platform.security.mtls import (
 
 # ── create_mtls_context ────────────────────────────────────────────────────────
 
+
 class TestCreateMTLSContext:
     """SSLContext tests use patched file-loading to avoid needing real certs."""
 
     def _make_ctx(self, **kwargs):
-        with patch.object(ssl.SSLContext, "load_cert_chain"), \
-             patch.object(ssl.SSLContext, "load_verify_locations"):
+        with (
+            patch.object(ssl.SSLContext, "load_cert_chain"),
+            patch.object(ssl.SSLContext, "load_verify_locations"),
+        ):
             return create_mtls_context(
                 cert_file=kwargs.get("cert_file", "/tmp/server.crt"),
                 key_file=kwargs.get("key_file", "/tmp/server.key"),
@@ -43,14 +46,18 @@ class TestCreateMTLSContext:
         assert ctx.verify_mode == ssl.CERT_REQUIRED
 
     def test_load_cert_chain_called_with_cert_and_key(self):
-        with patch.object(ssl.SSLContext, "load_verify_locations"), \
-             patch.object(ssl.SSLContext, "load_cert_chain") as mock_lc:
+        with (
+            patch.object(ssl.SSLContext, "load_verify_locations"),
+            patch.object(ssl.SSLContext, "load_cert_chain") as mock_lc,
+        ):
             create_mtls_context("/my/cert.pem", "/my/key.pem", "/my/ca.pem")
         mock_lc.assert_called_once_with("/my/cert.pem", "/my/key.pem")
 
     def test_load_verify_locations_called_with_ca(self):
-        with patch.object(ssl.SSLContext, "load_cert_chain"), \
-             patch.object(ssl.SSLContext, "load_verify_locations") as mock_lv:
+        with (
+            patch.object(ssl.SSLContext, "load_cert_chain"),
+            patch.object(ssl.SSLContext, "load_verify_locations") as mock_lv,
+        ):
             create_mtls_context("/my/cert.pem", "/my/key.pem", "/my/ca.pem")
         mock_lv.assert_called_once_with("/my/ca.pem")
 
@@ -62,10 +69,13 @@ class TestCreateMTLSContext:
 
 # ── CertManager (hot reload) ──────────────────────────────────────────────────
 
+
 class TestCertManager:
     def _manager(self):
-        with patch.object(ssl.SSLContext, "load_cert_chain"), \
-             patch.object(ssl.SSLContext, "load_verify_locations"):
+        with (
+            patch.object(ssl.SSLContext, "load_cert_chain"),
+            patch.object(ssl.SSLContext, "load_verify_locations"),
+        ):
             return CertManager(
                 cert_file="/tmp/server.crt",
                 key_file="/tmp/server.key",
@@ -78,8 +88,10 @@ class TestCertManager:
 
     def test_reload_calls_load_cert_chain_again(self):
         mgr = self._manager()
-        with patch.object(mgr.context, "load_cert_chain") as mock_lc, \
-             patch.object(mgr.context, "load_verify_locations"):
+        with (
+            patch.object(mgr.context, "load_cert_chain") as mock_lc,
+            patch.object(mgr.context, "load_verify_locations"),
+        ):
             mgr.reload()
         mock_lc.assert_called_once_with(mgr._cert_file, mgr._key_file)
 
@@ -87,20 +99,25 @@ class TestCertManager:
         """Hot-reload must not replace the context — that would drop connections."""
         mgr = self._manager()
         ctx_before = mgr.context
-        with patch.object(mgr.context, "load_cert_chain"), \
-             patch.object(mgr.context, "load_verify_locations"):
+        with (
+            patch.object(mgr.context, "load_cert_chain"),
+            patch.object(mgr.context, "load_verify_locations"),
+        ):
             mgr.reload()
         assert mgr.context is ctx_before
 
     def test_reload_called_multiple_times_does_not_raise(self):
         mgr = self._manager()
         for _ in range(3):
-            with patch.object(mgr.context, "load_cert_chain"), \
-                 patch.object(mgr.context, "load_verify_locations"):
+            with (
+                patch.object(mgr.context, "load_cert_chain"),
+                patch.object(mgr.context, "load_verify_locations"),
+            ):
                 mgr.reload()
 
 
 # ── MTLSMiddleware ─────────────────────────────────────────────────────────────
+
 
 def _build_app(enabled: bool, cert_checker=None) -> FastAPI:
     app = FastAPI()
@@ -152,6 +169,7 @@ class TestMTLSMiddlewareEnabled:
     def test_non_http_scope_not_checked(self):
         """WebSocket / lifespan scopes must not be blocked."""
         checked = []
+
         def checker(scope):
             checked.append(scope["type"])
             return False
@@ -171,18 +189,22 @@ class TestMTLSMiddlewareEnabled:
 
 # ── mtls_config_from_env ──────────────────────────────────────────────────────
 
+
 class TestTransportCertChecker:
     def test_returns_true_when_no_transport(self):
         from sandbox_platform.security.mtls import _transport_cert_checker
+
         assert _transport_cert_checker({}) is True
 
     def test_returns_true_when_transport_has_no_get_extra_info(self):
         from sandbox_platform.security.mtls import _transport_cert_checker
+
         assert _transport_cert_checker({"transport": object()}) is True
 
     def test_returns_true_when_peer_cert_present(self):
         from unittest.mock import MagicMock
         from sandbox_platform.security.mtls import _transport_cert_checker
+
         transport = MagicMock()
         transport.get_extra_info.return_value = {"subject": []}  # non-None cert
         assert _transport_cert_checker({"transport": transport}) is True
@@ -191,6 +213,7 @@ class TestTransportCertChecker:
     def test_returns_false_when_peer_cert_absent(self):
         from unittest.mock import MagicMock
         from sandbox_platform.security.mtls import _transport_cert_checker
+
         transport = MagicMock()
         transport.get_extra_info.return_value = None  # no cert
         assert _transport_cert_checker({"transport": transport}) is False

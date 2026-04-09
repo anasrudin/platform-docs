@@ -2,6 +2,7 @@
 
 Mirrors pkg/types/types.go.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -45,6 +46,7 @@ class Job:
     duration_ms: int = 0
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)
+    trace_id: str = ""
 
 
 @dataclass
@@ -86,7 +88,7 @@ class HealthResponse:
 class ArtifactMeta:
     id: str
     name: str
-    key: str        # MinIO key: <id>/<name>
+    key: str  # MinIO key: <id>/<name>
     url: str
     size: int
     content_type: str

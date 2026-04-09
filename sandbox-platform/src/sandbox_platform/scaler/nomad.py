@@ -4,6 +4,7 @@ Environment variables:
   NOMAD_ADDR   — Nomad server address (default: http://127.0.0.1:4646)
   NOMAD_TOKEN  — ACL token (default: empty)
 """
+
 from __future__ import annotations
 
 import os
@@ -11,6 +12,7 @@ from typing import Any
 
 import httpx
 import structlog
+from sandbox_platform.middleware.trace import get_trace_id
 
 log = structlog.get_logger()
 
@@ -36,6 +38,9 @@ class NomadClient:
         headers: dict[str, str] = {}
         if self._token:
             headers["X-Nomad-Token"] = self._token
+        trace_id = get_trace_id()
+        if trace_id:
+            headers["X-Trace-ID"] = trace_id
         kwargs: dict[str, Any] = {"base_url": self._address, "headers": headers}
         if self._transport is not None:
             kwargs["transport"] = self._transport
@@ -80,5 +85,6 @@ class NomadClient:
                 f"scale_job failed: job={job_id} group={group} "
                 f"count={count} status={resp.status_code}"
             )
-        log.info("nomad: scaled job", job=job_id, group=group,
-                 count=count, reason=reason)
+        log.info(
+            "nomad: scaled job", job=job_id, group=group, count=count, reason=reason
+        )

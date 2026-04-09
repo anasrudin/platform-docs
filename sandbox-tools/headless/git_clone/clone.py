@@ -8,7 +8,6 @@ Output: {"path": "/work/repo", "files": ["README.md", ...], "exit_code": 0}
 import json
 import os
 import subprocess
-import sys
 
 WORK_DIR = "/work"
 
@@ -40,12 +39,16 @@ def main():
 
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
     if result.returncode != 0:
-        print(json.dumps({
-            "path": "",
-            "files": [],
-            "stderr": result.stderr,
-            "exit_code": result.returncode,
-        }))
+        print(
+            json.dumps(
+                {
+                    "path": "",
+                    "files": [],
+                    "stderr": result.stderr,
+                    "exit_code": result.returncode,
+                }
+            )
+        )
         return
 
     # List top-level files.
