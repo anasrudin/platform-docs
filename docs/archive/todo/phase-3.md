@@ -52,7 +52,7 @@ docker build -f docker/gui-agent/Dockerfile -t sandbox-gui-agent:latest .
 
 Tiga group dalam satu job, tiap group pakai image yang sesuai:
 
-File: [services/nomad/jobs/sandbox-worker.nomad](../../services/nomad/jobs/sandbox-worker.nomad)
+File: `services/nomad/jobs/sandbox-worker.nomad`
 
 ```
 fc-agent   → node.class = firecracker  → port 8081  → driver: docker (+ /dev/kvm)
