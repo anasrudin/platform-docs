@@ -26,6 +26,7 @@ from adapters.registry.health_server import start_health_server
 from adapters.storage.s3_compat import Config as ArtifactConfig, Store as ArtifactStore, mc_available
 from adapters.storage.local import PackageStore, LocalStorage
 from api.middleware.auth import TenantAuthMiddleware, auth_config_from_env
+from api.middleware.request_id import RequestIDMiddleware
 from api.middleware.tracing import TracingMiddleware
 from api.routes import artifact, execute, health, hibernation, package, session, streaming, workspace
 from config.settings import settings
@@ -165,6 +166,7 @@ async def lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     app = FastAPI(title="sandbox-platform-worker", lifespan=lifespan)
 
+    app.add_middleware(RequestIDMiddleware)
     app.add_middleware(TracingMiddleware)
     _auth_cfg = auth_config_from_env()
     app.add_middleware(TenantAuthMiddleware, enabled=_auth_cfg["enabled"])
