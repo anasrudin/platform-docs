@@ -1,7 +1,7 @@
 # Phase 3 — Nomad Worker Image
 
 **Status:** In Progress  
-**Last updated:** 2026-04-10
+**Last updated:** 2026-04-10 (verified against codebase)
 
 ---
 
@@ -381,30 +381,31 @@ dag-results/
 ## Yang Belum Selesai
 
 ### Docker image
-- [ ] Pisah LibreOffice ke `Dockerfile.office-agent` tersendiri
-- [ ] Fix `Dockerfile.gui-agent` — hapus Playwright download Chromium, pakai apt chromium
+- [x] Pisah LibreOffice ke `Dockerfile.office-agent` tersendiri — `docker/office-agent/Dockerfile`
+- [x] Fix `Dockerfile.gui-agent` — hapus `playwright install chromium`, pakai apt chromium saja
 - [x] Buat root `Makefile` — services, cluster, snapshot, image, deploy, test
 - [ ] Build `sandbox-fc-agent` dan `sandbox-gui-agent`, push ke registry (`make image-build image-push`)
-- [ ] Tambah CI pipeline untuk build + push otomatis
-- [ ] Setup node `wasm` — install Wasmtime + Python di host via `setup-firecracker.sh`
+- [ ] Tambah CI pipeline untuk build + push otomatis *(tidak ada `.github/workflows/`)*
+- [ ] Setup node `wasm` — install Wasmtime + Python di host via `setup-firecracker.sh` *(Wasmtime belum ada di script)*
 
 ### DAG Execution
-- [ ] Tambah `models/dag.py` — `DAGRequest`, `DAGStep`, `DAGResult`, `StepStatus`
-- [ ] Tambah `service/dag.py` — topological sort, sequential + parallel execution
-- [ ] Update `service/execution.py` — tambah `execute_dag()`
-- [ ] Tambah `api/routes/dag.py` — `POST /execute/dag`
-- [ ] Update `api/app.py` — register dag router
-- [ ] Tambah in-process Wasmtime execution di `runtime/wasm.py` untuk mixed DAG
-- [ ] Test: sequential DAG, parallel DAG, mixed runtime DAG
-- [ ] Test: step result di-pass ke step berikutnya via `$step_id.output`
+- [x] Tambah `models/workflow.py` — `DAGWorkflow`, `WorkflowStep`, `StepResult`, `StepStatus` *(sudah ada, digunakan)*
+- [x] Tambah `service/workflow.py` — topological sort (Kahn's), parallel waves via ThreadPoolExecutor, `$steps.step_id.output` interpolation
+- [x] Tambah `api/routes/workflow.py` — `POST /workflows` (202), `GET /workflows/{id}` (200/404/503)
+- [x] Update `api/app.py` — register workflow router, wire WorkflowService
+- [ ] Tambah in-process Wasmtime execution di `runtime/wasm.py` untuk mixed DAG *(out of scope — skipped)*
+- [x] Test: sequential DAG, parallel DAG — 31 tests in `tests/unit/test_workflow.py`
+- [x] Test: step result di-pass ke step berikutnya via `$steps.step_id.output` — covered
 
 ### Continuous Snapshot
-- [ ] Tambah `SnapshotMode` enum dan `UserSnapshot` model ke `models/`
-- [ ] Update `models/session.py` — tambah field `snapshot_mode`
-- [ ] Update `orchestrator/snapshot.py` — `load_user_snapshot()`, `save_user_snapshot()`, `delete_user_snapshot()`
-- [ ] Update `service/execution.py` — cek mode, trigger save saat session end
-- [ ] Update `api/routes/session.py` — terima `snapshot_mode` di request
-- [ ] Tambah `api/routes/snapshot.py` — `DELETE /snapshots/{user_id}` untuk force reset
-- [ ] Update `adapters/storage/s3_compat.py` — user snapshot CRUD ke MinIO
-- [ ] Test: clean mode tidak menyimpan snapshot, continuous mode menyimpan
-- [ ] Test: force reset menghapus user snapshot, sesi berikutnya dari base
+- [x] Tambah `SnapshotMode` enum ke `models/session.py`
+- [x] Update `models/session.py` — tambah field `snapshot_mode` pada `Session`, `CreateSessionRequest`, `CreateSessionResponse`
+- [x] Update `models/job.py` — tambah field `snapshot_paths: Any = None` untuk forward ke VM
+- [x] Update `orchestrator/snapshot.py` — `load_session_snapshot()`, `save_session_snapshot()`, `delete_session_snapshot()` dengan key prefix `sessions/{session_id}/`
+- [x] Update `service/execution.py` — cek `snapshot_mode`, load sebelum run, save setelah success (exit_code=0)
+- [x] Update `api/routes/session.py` — terima `snapshot_mode` di request body via `Body(default_factory=dict)`
+- [x] Tambah `api/routes/snapshot.py` — `DELETE /snapshots/{session_id}` untuk force reset (204/503)
+- [x] Update `api/app.py` — inject downloader ke ExecutionService, register snapshot router
+- [x] Test: clean mode tidak menyimpan snapshot, continuous mode menyimpan — `tests/unit/test_continuous_snapshot.py` (20 tests)
+- [x] Test: force reset menghapus session snapshot dari storage + local cache
+- [ ] Update `adapters/storage/s3_compat.py` — CRUD ke MinIO *(SnapshotDownloader uses BlobStore protocol, no direct s3_compat changes needed)*
