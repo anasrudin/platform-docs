@@ -246,7 +246,7 @@ curl -s -X PUT \
   }'
 ```
 
-Each command returns `{}` on success.
+Each command returns HTTP 204 No Content (curl prints nothing on success).
 
 **4d. Start the VM**
 
