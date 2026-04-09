@@ -41,13 +41,24 @@ from service.session import SessionService
 from service.streaming import StreamingService
 from service.workspace import WorkspaceService
 
-structlog.configure(
-    wrapper_class=structlog.make_filtering_bound_logger(logging.INFO),
-    processors=[
-        structlog.processors.TimeStamper(fmt="iso"),
-        structlog.processors.JSONRenderer(),
-    ],
-)
+def _configure_logging(dev_mode: bool) -> None:
+    """Konfigurasi structlog berdasarkan mode."""
+    shared_processors = [
+        structlog.contextvars.merge_contextvars,
+        structlog.processors.TimeStamper(fmt="%H:%M:%S.%f" if dev_mode else "iso"),
+    ]
+    if dev_mode:
+        structlog.configure(
+            wrapper_class=structlog.make_filtering_bound_logger(logging.DEBUG),
+            processors=shared_processors + [structlog.dev.ConsoleRenderer()],
+        )
+    else:
+        structlog.configure(
+            wrapper_class=structlog.make_filtering_bound_logger(logging.INFO),
+            processors=shared_processors + [structlog.processors.JSONRenderer()],
+        )
+
+
 log = structlog.get_logger()
 
 _state: dict = {}
@@ -56,6 +67,7 @@ _state: dict = {}
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     cfg = settings
+    _configure_logging(cfg.api.dev_mode)
 
     # Tracing
     init_tracer(
