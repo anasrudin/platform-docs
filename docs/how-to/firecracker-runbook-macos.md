@@ -136,10 +136,10 @@ In sim mode there is no real VM. A "snapshot" is three files uploaded to MinIO:
 
 ```bash
 mc alias set local http://localhost:9000 minioadmin minioadmin
-mc mb local/platform-snapshots --ignore-existing
+mc mb local/platform-snapshots || true
 ```
 
-Expected: `Bucket created successfully` or `Bucket 'local/platform-snapshots' already exists`.
+Expected: `Bucket created successfully \`local/platform-snapshots\``.
 
 **4b. Create the snapshot files locally**
 
@@ -159,7 +159,8 @@ cat > /tmp/python-v1/meta.json <<'EOF'
   "rootfs": "python-v1.ext4",
   "vcpus": 2,
   "mem_mib": 512,
-  "dry_run": true
+  "dry_run": true,
+  "files": {}
 }
 EOF
 ```
@@ -194,6 +195,8 @@ Troubleshoot: if `mc alias set` fails, check MinIO is up (`docker compose ps` fr
 
 `SnapshotStore.ensure()` downloads from MinIO to a local cache on first access, then serves from disk on subsequent requests. The cache dir is `SNAPSHOT_CACHE_DIR` (default `/var/sandbox/cache`).
 
+> **Known issue:** The `fc-agent` entry point currently fails to start because the `agents` package is not yet present in `src/`. Running `fc-agent` will produce `ModuleNotFoundError: No module named 'agents'`. Section 5 documents the intended workflow for when the package is available. To verify snapshot download now, you can exercise `SnapshotStore` directly via the platform API (see section 7).
+
 **5a. Start fc-agent with snapshot env vars**
 
 In a new terminal (from `sandbox-worker/`):
@@ -221,6 +224,8 @@ On second start (cache hit):
 ```
 snapshot cache hit  name=python-v1
 ```
+
+> **Note:** The cache-hit message is `debug` level. It only appears if debug logging is enabled (e.g., set `LOG_LEVEL=debug` as an additional env var). With default log config, no snapshot log line will appear on cache hit — this is expected.
 
 **5b. Verify local cache**
 
