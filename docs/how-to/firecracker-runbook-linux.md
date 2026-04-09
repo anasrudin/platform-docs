@@ -535,6 +535,16 @@ echo "Session: $SESSION"
 
 Expected: `Session: <uuid>` (e.g. `3f7b2c1d-e4f5-...`)
 
+> **Full response shape** (run `curl ... | jq` without the `.session_id` extract to see it):
+> ```json
+> {
+>   "session_id": "3f7b2c1d-e4f5-...",
+>   "runtime": "firecracker",
+>   "status": "active",
+>   "snapshot_mode": "clean"
+> }
+> ```
+
 **7c. Execute Python code**
 
 ```bash
