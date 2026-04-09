@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -121,16 +122,23 @@ class SnapshotDownloader:
             log.info("session snapshot downloaded", session_id=session_id)
             return self._load_meta(paths)
         except Exception as exc:
-            log.warning("failed to load session snapshot", session_id=session_id, err=str(exc))
+            log.error("failed to load session snapshot", session_id=session_id, err=str(exc))
             return None
 
     def save_session_snapshot(self, session_id: str, local_dir: str) -> None:
         """Upload snapshot blobs from local_dir under sessions/{session_id}/ prefix."""
+        if not session_id:
+            raise ValueError("session_id must not be empty")
         prefix = f"sessions/{session_id}"
         for blob in self._BLOBS:
-            data = Path(os.path.join(local_dir, blob)).read_bytes()
-            self._storage.upload(f"{prefix}/{blob}", data)
-            log.info("session snapshot blob uploaded", key=f"{prefix}/{blob}", size=len(data))
+            src = os.path.join(local_dir, blob)
+            try:
+                data = Path(src).read_bytes()
+                self._storage.upload(f"{prefix}/{blob}", data)
+                log.info("session snapshot blob uploaded", key=f"{prefix}/{blob}", size=len(data))
+            except Exception as exc:
+                log.error("failed to upload session snapshot blob", key=f"{prefix}/{blob}", err=str(exc))
+                raise
 
     def delete_session_snapshot(self, session_id: str) -> None:
         """Delete blobs under sessions/{session_id}/ from storage and local cache."""
@@ -144,8 +152,11 @@ class SnapshotDownloader:
 
         local_dir = os.path.join(self._cache_dir, "sessions", session_id)
         if os.path.exists(local_dir):
-            import shutil
-            shutil.rmtree(local_dir)
+            try:
+                shutil.rmtree(local_dir)
+                log.debug("session snapshot local cache removed", local_dir=local_dir)
+            except OSError as exc:
+                log.warning("failed to remove session snapshot cache", local_dir=local_dir, err=str(exc))
 
     def _load_meta(self, paths: SnapshotPaths) -> SnapshotPaths:
         with open(paths.meta_file) as f:

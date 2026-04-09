@@ -70,6 +70,22 @@ class TestLoadSessionSnapshot:
         result = dl.load_session_snapshot("sess-missing")
         assert result is None
 
+    def test_returns_none_if_memory_blob_missing(self, tmp_path):
+        storage = MagicMock()
+        storage.exists.side_effect = lambda key: "memory" not in key
+
+        dl = SnapshotDownloader(storage=storage, cache_dir=str(tmp_path))
+        result = dl.load_session_snapshot("sess-nomem")
+        assert result is None
+
+    def test_returns_none_if_meta_blob_missing(self, tmp_path):
+        storage = MagicMock()
+        storage.exists.side_effect = lambda key: "meta" not in key
+
+        dl = SnapshotDownloader(storage=storage, cache_dir=str(tmp_path))
+        result = dl.load_session_snapshot("sess-nometa")
+        assert result is None
+
 
 class TestSaveSessionSnapshot:
     def test_uploads_all_blobs(self, tmp_path):
@@ -87,6 +103,24 @@ class TestSaveSessionSnapshot:
         assert "sessions/sess-save/vmstate.bin" in uploaded_keys
         assert "sessions/sess-save/memory.bin" in uploaded_keys
         assert "sessions/sess-save/meta.json" in uploaded_keys
+
+    def test_raises_on_storage_upload_error(self, tmp_path):
+        local_dir = tmp_path / "src"
+        _write_snapshot_blobs(str(local_dir))
+
+        storage = MagicMock()
+        storage.upload.side_effect = RuntimeError("storage unavailable")
+        dl = SnapshotDownloader(storage=storage, cache_dir=str(tmp_path))
+
+        with pytest.raises(RuntimeError, match="storage unavailable"):
+            dl.save_session_snapshot("sess-fail", str(local_dir))
+
+    def test_raises_on_missing_local_dir(self, tmp_path):
+        storage = MagicMock()
+        dl = SnapshotDownloader(storage=storage, cache_dir=str(tmp_path))
+
+        with pytest.raises(FileNotFoundError):
+            dl.save_session_snapshot("sess-nodir", str(tmp_path / "nonexistent"))
 
 
 class TestDeleteSessionSnapshot:
@@ -113,16 +147,23 @@ class TestDeleteSessionSnapshot:
         assert not local_dir.exists()
 
     def test_delete_ignores_storage_errors(self, tmp_path):
+        local_dir = tmp_path / "sessions" / "sess-err"
+        _write_snapshot_blobs(str(local_dir))
+        assert local_dir.exists()
+
         storage = MagicMock()
         storage.delete.side_effect = Exception("not found")
         dl = SnapshotDownloader(storage=storage, cache_dir=str(tmp_path))
-        # Should not raise
+
+        # Should not raise despite storage errors
         dl.delete_session_snapshot("sess-err")
+
+        # Local cache should still be removed
+        assert not local_dir.exists()
 
 
 # ── SessionService snapshot_mode tests ───────────────────────────────────────
 
-import pytest
 from adapters.tracing import init_tracer, reset_tracer
 from service.session import SessionService
 
@@ -136,20 +177,17 @@ def tracer_setup():
 
 
 class TestSessionServiceSnapshotMode:
-    def test_default_is_clean(self):
-        import asyncio
+    async def test_default_is_clean(self):
         svc = SessionService()
-        result = asyncio.run(svc.create("wasm"))
+        result = await svc.create("wasm")
         assert result["snapshot_mode"] == "clean"
 
-    def test_continuous_mode_stored(self):
-        import asyncio
+    async def test_continuous_mode_stored(self):
         svc = SessionService()
-        result = asyncio.run(svc.create("wasm", "continuous"))
+        result = await svc.create("wasm", "continuous")
         assert result["snapshot_mode"] == "continuous"
 
-    def test_invalid_mode_falls_back_to_clean(self):
-        import asyncio
+    async def test_invalid_mode_falls_back_to_clean(self):
         svc = SessionService()
-        result = asyncio.run(svc.create("wasm", "invalid_mode"))
+        result = await svc.create("wasm", "invalid_mode")
         assert result["snapshot_mode"] == "clean"
