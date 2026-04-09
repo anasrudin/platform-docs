@@ -11,17 +11,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     xdotool \
     chromium-browser \
     chromium-chromedriver \
-    libreoffice \
-    libreoffice-calc \
-    libreoffice-writer \
-    libreoffice-impress \
     fonts-liberation \
     fonts-noto-cjk \
     && rm -rf /var/lib/apt/lists/*
 
-# ── Playwright ─────────────────────────────────────────────────────────────────
-RUN pip3 install --no-cache-dir playwright && \
-    playwright install chromium --with-deps 2>/dev/null || true
+# ── Playwright — use system Chromium, skip browser download ───────────────────
+RUN pip3 install --no-cache-dir playwright
+ENV PLAYWRIGHT_BROWSERS_PATH=/usr/bin
 
 ENV DISPLAY=:99
 ENV RUNTIME_TIER=gui

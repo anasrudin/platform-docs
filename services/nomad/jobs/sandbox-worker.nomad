@@ -150,4 +150,52 @@ job "sandbox-worker" {
       }
     }
   }
+
+  group "office-agent" {
+    count = 1
+
+    constraint {
+      attribute = "${node.class}"
+      value     = "office"
+    }
+
+    network {
+      port "http" {
+        static = 8084
+      }
+    }
+
+    task "office-agent" {
+      driver = "docker"
+
+      config {
+        image = "sandbox-office-agent:latest"
+        ports = ["http"]
+      }
+
+      env {
+        RUNTIME_TIER     = "office"
+        CONSUL_ENABLED   = "true"
+        MINIO_ENDPOINT   = "http://minio:9000"
+      }
+
+      resources {
+        cpu    = 1000
+        memory = 1024
+      }
+
+      service {
+        name = "sandbox-office-agent"
+        port = "http"
+        tags = ["sandbox", "office"]
+
+        check {
+          type     = "http"
+          path     = "/health"
+          interval = "10s"
+          timeout  = "3s"
+        }
+      }
+    }
+  }
 }
