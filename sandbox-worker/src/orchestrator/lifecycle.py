@@ -14,6 +14,7 @@ import structlog
 from orchestrator.snapshot import SnapshotDownloader, SnapshotPaths
 from runtime.firecracker import VMPool
 from adapters.storage.base import BlobStore
+from adapters.tracing import get_tracer
 
 log = structlog.get_logger()
 
@@ -56,7 +57,16 @@ class VMLifecycleManager:
     def acquire(self, timeout: float = 30.0):
         if self._pool is None:
             raise RuntimeError("VMLifecycleManager not started")
-        return self._pool.acquire(timeout=timeout)
+        tracer = get_tracer()
+        with tracer.start_span("pool.acquire", {
+            "pool_size": self._pool_size,
+            "snapshot_name": self._snapshot_name,
+            "timeout_s": timeout,
+        }) as span:
+            vm = self._pool.acquire(timeout=timeout)
+            if hasattr(self._pool, "available"):
+                span.set_attribute("pool_available", self._pool.available)
+            return vm
 
     def release(self, vm) -> None:
         if self._pool is not None:
