@@ -1,0 +1,4 @@
+mkdocs-material>=9.0
+mkdocs-swagger-ui-tag>=0.6
+mkdocs-git-revision-date-localized>=1.2
+mkdocs-minify-html>=0.1
