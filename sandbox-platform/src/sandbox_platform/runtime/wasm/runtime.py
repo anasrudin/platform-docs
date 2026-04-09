@@ -6,6 +6,7 @@ Mode selection:
   1. WASM_MODE env var ("real" | "sim")
   2. Presence of `wasmtime` in PATH (found → real, missing → sim)
 """
+
 from __future__ import annotations
 
 import json
@@ -98,8 +99,11 @@ class Runtime:
         try:
             module_path = self._store.ensure(job.tool)
         except Exception as exc:
-            log.error("module download failed, falling back to sim",
-                      tool=job.tool, err=str(exc))
+            log.error(
+                "module download failed, falling back to sim",
+                tool=job.tool,
+                err=str(exc),
+            )
             return self._sim_exec(job)
 
         input_json = json.dumps(job.input).encode()
@@ -117,8 +121,13 @@ class Runtime:
             return RuntimeResult(stderr=f"wasmtime error: {exc}", exit_code=1)
 
         duration_ms = int((time.monotonic() - start) * 1000)
-        log.info("wasm execute done", job_id=job.id, tool=job.tool,
-                 exit_code=result.returncode, duration_ms=duration_ms)
+        log.info(
+            "wasm execute done",
+            job_id=job.id,
+            tool=job.tool,
+            exit_code=result.returncode,
+            duration_ms=duration_ms,
+        )
 
         return RuntimeResult(
             stdout=result.stdout.decode(errors="replace"),
@@ -138,8 +147,12 @@ class Runtime:
         duration_ms = int((time.monotonic() - start) * 1000)
 
         if err:
-            log.error("wasm sim execution failed", tool=job.tool,
-                      err=str(err), duration_ms=duration_ms)
+            log.error(
+                "wasm sim execution failed",
+                tool=job.tool,
+                err=str(err),
+                duration_ms=duration_ms,
+            )
             return RuntimeResult(stderr=str(err), exit_code=1)
 
         log.info("wasm sim complete", tool=job.tool, duration_ms=duration_ms)

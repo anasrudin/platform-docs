@@ -2,9 +2,11 @@
 
 Mirrors cmd/platform-api/main.go.
 """
+
 from __future__ import annotations
 
 import asyncio
+import io
 import json
 import logging
 import os
@@ -16,7 +18,7 @@ from pathlib import Path
 import structlog
 import uvicorn
 from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse
 
 from sandbox_platform.artifacts.store import Config as ArtifactConfig
 from sandbox_platform.artifacts.store import Store as ArtifactStore
@@ -29,6 +31,7 @@ from sandbox_platform.queue.client import new_redis_client
 from sandbox_platform.router.router import Router
 from sandbox_platform.packages.store import PackageStore
 from sandbox_platform.security.mtls import MTLSMiddleware, mtls_config_from_env
+from sandbox_platform.middleware.trace import TraceIDMiddleware
 from sandbox_platform.scaler.metrics import MetricsCollector
 from sandbox_platform.scaler.nomad import NomadClient
 from sandbox_platform.scaler.policy import ScalingPolicy
@@ -37,11 +40,7 @@ from sandbox_platform.session.consul_store import SessionStore
 from sandbox_platform.session.manager import Manager as SessionManager
 from sandbox_platform.session.manager import new_connection
 from sandbox_platform.types import (
-    ArtifactUploadResponse,
-    CreateSessionRequest,
     CreateSessionResponse,
-    ExecuteRequest,
-    ExecuteResponse,
     HealthResponse,
     JobStatus,
     Tier,
@@ -50,11 +49,13 @@ from sandbox_platform.types import (
 structlog.configure(
     wrapper_class=structlog.make_filtering_bound_logger(logging.INFO),
     processors=[
-        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.contextvars.merge_contextvars,
+        structlog.processors.add_log_level,
+        structlog.processors.TimeStamper(fmt="iso", key="ts"),
         structlog.processors.JSONRenderer(),
     ],
 )
-log = structlog.get_logger()
+log = structlog.get_logger().bind(service="platform-api")
 
 
 def _env_or(key: str, default: str) -> str:
@@ -69,8 +70,10 @@ _state: dict = {}
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Database
-    dsn = _env_or("DATABASE_URL",
-                   "postgres://postgres:postgres@localhost:5432/platform?sslmode=disable")
+    dsn = _env_or(
+        "DATABASE_URL",
+        "postgres://postgres:postgres@localhost:5432/platform?sslmode=disable",
+    )
     conn = new_connection(dsn)
     session_mgr = SessionManager(conn)
     session_mgr.init_db()
@@ -93,8 +96,11 @@ async def lifespan(app: FastAPI):
         and ("localhost" in art_cfg.endpoint or "127.0.0.1" in art_cfg.endpoint)
     ):
         art_cfg.local_dir = str(Path(tempfile.gettempdir()) / "platform-artifacts")
-        log.info("artifact store falling back to local filesystem",
-                 dir=art_cfg.local_dir, endpoint=art_cfg.endpoint)
+        log.info(
+            "artifact store falling back to local filesystem",
+            dir=art_cfg.local_dir,
+            endpoint=art_cfg.endpoint,
+        )
     art_store = ArtifactStore(art_cfg)
     try:
         art_store.ensure_bucket()
@@ -109,7 +115,6 @@ async def lifespan(app: FastAPI):
     # Package store (MinIO or local dir fallback)
     pkg_local_dir = _env_or("PACKAGES_LOCAL_DIR", "")
     if not pkg_local_dir:
-        import tempfile
         pkg_local_dir = str(Path(tempfile.gettempdir()) / "platform-packages")
         log.info("package store falling back to local filesystem", dir=pkg_local_dir)
     _state["pkg_store"] = PackageStore(local_dir=pkg_local_dir)
@@ -164,6 +169,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="sandbox-platform", lifespan=lifespan)
 
+app.add_middleware(TraceIDMiddleware)
+
 # mTLS middleware — opt-in via MTLS_ENABLED=true
 _mtls_cfg = mtls_config_from_env()
 app.add_middleware(
@@ -174,8 +181,11 @@ app.add_middleware(
 
 # ── Health ─────────────────────────────────────────────────────────────────────
 
+
 @app.get("/health")
 def health() -> JSONResponse:
+    if "db_conn" not in _state:
+        return JSONResponse(content={"status": "starting"}, status_code=200)
     conn = _state["db_conn"]
     rdb = _state["rdb"]
     services: dict[str, str] = {}
@@ -192,16 +202,23 @@ def health() -> JSONResponse:
     except Exception as exc:
         services["redis"] = f"unhealthy: {exc}"
 
-    overall = "healthy" if all(v == "healthy" for v in services.values()) else "degraded"
+    overall = (
+        "healthy" if all(v == "healthy" for v in services.values()) else "degraded"
+    )
     resp = HealthResponse(status=overall, version="0.1.0-local", services=services)
     status_code = 200 if overall == "healthy" else 503
     return JSONResponse(
-        content={"status": resp.status, "version": resp.version, "services": resp.services},
+        content={
+            "status": resp.status,
+            "version": resp.version,
+            "services": resp.services,
+        },
         status_code=status_code,
     )
 
 
 # ── Sessions ───────────────────────────────────────────────────────────────────
+
 
 @app.post("/sessions")
 async def create_session(body: dict = None) -> JSONResponse:
@@ -226,14 +243,17 @@ async def create_session(body: dict = None) -> JSONResponse:
         runtime=sess.runtime,
         status=sess.status,
     )
-    return JSONResponse(content={
-        "session_id": resp.session_id,
-        "runtime": resp.runtime.value,
-        "status": resp.status,
-    })
+    return JSONResponse(
+        content={
+            "session_id": resp.session_id,
+            "runtime": resp.runtime.value,
+            "status": resp.status,
+        }
+    )
 
 
 # ── Execute ────────────────────────────────────────────────────────────────────
+
 
 @app.post("/execute")
 def execute(request: Request, body: dict) -> JSONResponse:
@@ -251,7 +271,9 @@ def execute(request: Request, body: dict) -> JSONResponse:
         try:
             sess = session_mgr.get(session_id)
         except KeyError:
-            raise HTTPException(status_code=404, detail=f"Session not found: {session_id}")
+            raise HTTPException(
+                status_code=404, detail=f"Session not found: {session_id}"
+            )
     else:
         tier = router.resolve(tool)
         sess = session_mgr.create(tier)
@@ -260,9 +282,6 @@ def execute(request: Request, body: dict) -> JSONResponse:
     input_data = body.get("input") or {}
     input_bytes = json.dumps(input_data).encode()
     tier = router.resolve(tool)
-
-    from sandbox_platform.types import Job, JobStatus
-    from datetime import datetime
 
     job = session_mgr.create_job(session_id, tool, tier, input_bytes)
     job.input = input_data
@@ -280,16 +299,19 @@ def execute(request: Request, body: dict) -> JSONResponse:
 
     session_mgr.update_job(job.id, status, result.stdout, err_msg, duration_ms)
 
-    return JSONResponse(content={
-        "job_id": job.id,
-        "status": status.value,
-        "output": result.stdout,
-        "error_message": err_msg,
-        "duration_ms": duration_ms,
-    })
+    return JSONResponse(
+        content={
+            "job_id": job.id,
+            "status": status.value,
+            "output": result.stdout,
+            "error_message": err_msg,
+            "duration_ms": duration_ms,
+        }
+    )
 
 
 # ── Artifacts ──────────────────────────────────────────────────────────────────
+
 
 @app.post("/artifacts")
 async def upload_artifact(
@@ -302,25 +324,32 @@ async def upload_artifact(
     artifact_id = str(uuid.uuid4())
 
     content = await file.read()
-    import io
+
     key = art_store.upload(artifact_id, artifact_name, io.BytesIO(content))
 
-    log.info("artifact uploaded", artifact_id=artifact_id,
-             session_id=session_id, name=artifact_name, size=len(content))
+    log.info(
+        "artifact uploaded",
+        artifact_id=artifact_id,
+        session_id=session_id,
+        name=artifact_name,
+        size=len(content),
+    )
 
-    return JSONResponse(content={
-        "artifact_id": artifact_id,
-        "key": key,
-        "url": art_store.url(key),
-        "size": len(content),
-    })
+    return JSONResponse(
+        content={
+            "artifact_id": artifact_id,
+            "key": key,
+            "url": art_store.url(key),
+            "size": len(content),
+        }
+    )
 
 
 @app.get("/artifacts/{artifact_id}/{name}")
 def download_artifact(artifact_id: str, name: str) -> Response:
     art_store: ArtifactStore = _state["art_store"]
     key = f"{artifact_id}/{name}"
-    import io
+
     buf = io.BytesIO()
     try:
         art_store.download(key, buf)
@@ -332,6 +361,7 @@ def download_artifact(artifact_id: str, name: str) -> Response:
 
 
 # ── Packages ───────────────────────────────────────────────────────────────────
+
 
 class PackageInstallRequest(BaseModel):
     session_id: str = ""
@@ -379,8 +409,11 @@ def delete_package(name: str, version: str = "") -> JSONResponse:
 
 # ── Entry point ────────────────────────────────────────────────────────────────
 
+
 def main() -> None:
-    uvicorn.run("platform_cmd.platform_api:app", host="0.0.0.0", port=8080, log_level="info")
+    uvicorn.run(
+        "platform_cmd.platform_api:app", host="0.0.0.0", port=8080, log_level="info"
+    )
 
 
 if __name__ == "__main__":

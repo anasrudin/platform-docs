@@ -1,15 +1,11 @@
 """Unit tests for sandbox_platform.types."""
+
 from datetime import datetime, timezone
 
-import pytest
 
 from sandbox_platform.types import (
     ArtifactMeta,
-    ArtifactUploadResponse,
     CreateSessionRequest,
-    CreateSessionResponse,
-    ExecuteRequest,
-    ExecuteResponse,
     HealthResponse,
     Job,
     JobStatus,
@@ -40,17 +36,25 @@ def test_job_status_values():
 
 def test_session_creation():
     now = datetime.now(timezone.utc)
-    s = Session(id="abc", runtime=Tier.WASM, status="active",
-                created_at=now, updated_at=now)
+    s = Session(
+        id="abc", runtime=Tier.WASM, status="active", created_at=now, updated_at=now
+    )
     assert s.id == "abc"
     assert s.runtime is Tier.WASM
 
 
 def test_job_defaults():
     now = datetime.now(timezone.utc)
-    j = Job(id="j1", session_id="s1", tool="echo",
-            tier=Tier.WASM, input={}, status=JobStatus.PENDING,
-            created_at=now, updated_at=now)
+    j = Job(
+        id="j1",
+        session_id="s1",
+        tool="echo",
+        tier=Tier.WASM,
+        input={},
+        status=JobStatus.PENDING,
+        created_at=now,
+        updated_at=now,
+    )
     assert j.output == ""
     assert j.error_message == ""
     assert j.duration_ms == 0
@@ -70,16 +74,20 @@ def test_runtime_result_fields():
 
 
 def test_health_response():
-    h = HealthResponse(status="healthy", version="0.1.0",
-                       services={"redis": "healthy"})
+    h = HealthResponse(status="healthy", version="0.1.0", services={"redis": "healthy"})
     assert h.status == "healthy"
     assert h.services["redis"] == "healthy"
 
 
 def test_artifact_meta():
-    a = ArtifactMeta(id="a1", name="file.txt", key="a1/file.txt",
-                     url="http://localhost/a1/file.txt", size=100,
-                     content_type="text/plain")
+    a = ArtifactMeta(
+        id="a1",
+        name="file.txt",
+        key="a1/file.txt",
+        url="http://localhost/a1/file.txt",
+        size=100,
+        content_type="text/plain",
+    )
     assert a.session_id == ""  # optional default
 
 

@@ -3,6 +3,7 @@
 Mirrors runtime/gui/runtime.go.
 In local dev mode, simulates browser automation by returning mocked results.
 """
+
 from __future__ import annotations
 
 import json

@@ -11,6 +11,7 @@ Environment variables:
   CONSUL_TOKEN        — Consul ACL token (default: empty)
   CONSUL_ENABLED      — Set to "true" to register with Consul (default: false)
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -30,11 +31,13 @@ from sandbox_platform.runtime.wasm.runtime import Runtime
 structlog.configure(
     wrapper_class=structlog.make_filtering_bound_logger(logging.INFO),
     processors=[
-        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.contextvars.merge_contextvars,
+        structlog.processors.add_log_level,
+        structlog.processors.TimeStamper(fmt="iso", key="ts"),
         structlog.processors.JSONRenderer(),
     ],
 )
-log = structlog.get_logger().bind(agent="wasm")
+log = structlog.get_logger().bind(service="wasm-agent")
 
 
 def _env_or(key: str, default: str) -> str:
@@ -76,8 +79,12 @@ def main() -> None:
             )
         )
 
-    log.info("Starting wasm-agent", tier=engine.tier().value,
-             health_port=health_port, consul_enabled=consul_enabled)
+    log.info(
+        "Starting wasm-agent",
+        tier=engine.tier().value,
+        health_port=health_port,
+        consul_enabled=consul_enabled,
+    )
 
     stop = False
 
@@ -104,11 +111,14 @@ def main() -> None:
             time.sleep(1)
             continue
 
+        trace_id = getattr(job, "trace_id", "")
+        structlog.contextvars.bind_contextvars(trace_id=trace_id)
         log.info("received job", job_id=job.id, tool=job.tool)
         try:
             result = engine.execute(job)
         except Exception as exc:
             from sandbox_platform.types import RuntimeResult
+
             result = RuntimeResult(stderr=str(exc), exit_code=1)
 
         try:

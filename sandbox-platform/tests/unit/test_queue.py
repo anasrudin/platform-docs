@@ -1,7 +1,8 @@
 """Unit tests for sandbox_platform.queue.client."""
+
 import json
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -12,26 +13,33 @@ from sandbox_platform.types import Job, JobStatus, RuntimeResult, Tier
 def _make_job(tool: str = "echo", tier: Tier = Tier.WASM) -> Job:
     now = datetime.now(timezone.utc)
     return Job(
-        id="j-test", session_id="s-test", tool=tool,
-        tier=tier, input={"k": "v"}, status=JobStatus.PENDING,
-        created_at=now, updated_at=now,
+        id="j-test",
+        session_id="s-test",
+        tool=tool,
+        tier=tier,
+        input={"k": "v"},
+        status=JobStatus.PENDING,
+        created_at=now,
+        updated_at=now,
     )
 
 
 def _serialised_job(job: Job) -> str:
-    return json.dumps({
-        "id": job.id,
-        "session_id": job.session_id,
-        "tool": job.tool,
-        "tier": job.tier.value,
-        "input": job.input,
-        "status": job.status.value,
-        "output": job.output,
-        "error_message": job.error_message,
-        "duration_ms": job.duration_ms,
-        "created_at": job.created_at.isoformat(),
-        "updated_at": job.updated_at.isoformat(),
-    })
+    return json.dumps(
+        {
+            "id": job.id,
+            "session_id": job.session_id,
+            "tool": job.tool,
+            "tier": job.tier.value,
+            "input": job.input,
+            "status": job.status.value,
+            "output": job.output,
+            "error_message": job.error_message,
+            "duration_ms": job.duration_ms,
+            "created_at": job.created_at.isoformat(),
+            "updated_at": job.updated_at.isoformat(),
+        }
+    )
 
 
 class TestClient:
@@ -111,8 +119,9 @@ class TestProducer:
     def test_push_serialises_message(self):
         rdb = MagicMock()
         producer = Producer(rdb, "my-stream")
-        msg = JobMessage(job_id="j1", tool="echo", tier="wasm",
-                         agent_id="a1", input='{"x":1}')
+        msg = JobMessage(
+            job_id="j1", tool="echo", tier="wasm", agent_id="a1", input='{"x":1}'
+        )
 
         producer.push(msg)
 
@@ -127,12 +136,16 @@ class TestProducer:
 class TestConsumer:
     def test_run_calls_handler_and_stops(self):
         rdb = MagicMock()
-        msg_data = json.dumps({
-            "job_id": "j1", "tool": "echo", "tier": "wasm",
-            "agent_id": "a1", "input": "",
-        })
+        msg_data = json.dumps(
+            {
+                "job_id": "j1",
+                "tool": "echo",
+                "tier": "wasm",
+                "agent_id": "a1",
+                "input": "",
+            }
+        )
         # First call returns a message; second call triggers stop via side effect
-        calls = [("my-stream", msg_data), None]
         call_count = [0]
         received: list[JobMessage] = []
 

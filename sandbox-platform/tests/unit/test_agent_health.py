@@ -1,7 +1,7 @@
 """Unit tests for the per-agent health server FastAPI app."""
+
 from __future__ import annotations
 
-import pytest
 from fastapi.testclient import TestClient
 
 from sandbox_platform.consul.health_server import make_health_app
@@ -64,11 +64,17 @@ class TestStartHealthServer:
         mock_thread = MagicMock()
         mock_server = MagicMock()
 
-        with patch("sandbox_platform.consul.health_server.uvicorn.Config"), \
-             patch("sandbox_platform.consul.health_server.uvicorn.Server",
-                   return_value=mock_server), \
-             patch("sandbox_platform.consul.health_server.threading.Thread",
-                   return_value=mock_thread) as mock_thread_cls:
+        with (
+            patch("sandbox_platform.consul.health_server.uvicorn.Config"),
+            patch(
+                "sandbox_platform.consul.health_server.uvicorn.Server",
+                return_value=mock_server,
+            ),
+            patch(
+                "sandbox_platform.consul.health_server.threading.Thread",
+                return_value=mock_thread,
+            ) as mock_thread_cls,
+        ):
             hs.start_health_server(9999, "fc-sim", lambda: 2)
 
         mock_thread_cls.assert_called_once()

@@ -3,6 +3,7 @@
 Mirrors runtime/firecracker/guest.go.
 Communication is via vsock (Linux) or TCP (dev/test mode).
 """
+
 from __future__ import annotations
 
 import json

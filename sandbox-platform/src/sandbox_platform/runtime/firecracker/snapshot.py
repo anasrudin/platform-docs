@@ -2,6 +2,7 @@
 
 Mirrors runtime/firecracker/snapshot.go.
 """
+
 from __future__ import annotations
 
 import json
@@ -22,6 +23,7 @@ log = structlog.get_logger()
 @dataclass
 class SnapshotMeta:
     """Mirrors the meta.json written by snapshot-builder.sh."""
+
     name: str = ""
     version: str = ""
     kernel: str = ""
@@ -91,14 +93,24 @@ class SnapshotStore:
             raise FileNotFoundError("mc not found in PATH")
         alias = f"fc-dl-{int(time.time() * 1e9)}"
         subprocess.run(
-            [mc, "alias", "set", alias, self._endpoint,
-             self._access_key, self._secret_key, "--quiet"],
-            check=True, capture_output=True,
+            [
+                mc,
+                "alias",
+                "set",
+                alias,
+                self._endpoint,
+                self._access_key,
+                self._secret_key,
+                "--quiet",
+            ],
+            check=True,
+            capture_output=True,
         )
         try:
             subprocess.run(
                 [mc, "mirror", "--quiet", f"{alias}/{prefix}", dest_dir],
-                check=True, capture_output=True,
+                check=True,
+                capture_output=True,
             )
         finally:
             subprocess.run([mc, "alias", "remove", alias], capture_output=True)

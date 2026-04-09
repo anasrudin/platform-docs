@@ -2,18 +2,19 @@
 
 Mirrors internal/queue/queue.go + producer.go + consumer.go.
 """
+
 from __future__ import annotations
 
 import json
 import threading
 from collections.abc import Callable
-from dataclasses import asdict, dataclass
-from typing import Any
+from dataclasses import dataclass
 
 import redis
 import structlog
 
 from sandbox_platform.types import Job, RuntimeResult, Tier
+from sandbox_platform.middleware.trace import get_trace_id
 
 log = structlog.get_logger()
 
@@ -21,6 +22,7 @@ log = structlog.get_logger()
 @dataclass
 class JobMessage:
     """Payload pushed onto a Redis list (used by Producer/Consumer)."""
+
     job_id: str
     tool: str
     tier: str
@@ -35,6 +37,7 @@ def new_redis_client(url: str) -> redis.Redis:
 
 # ── Main queue client (queue.go) ───────────────────────────────────────────────
 
+
 class Client:
     """Bi-directional queue client: push jobs, pop jobs, publish/wait results."""
 
@@ -43,19 +46,22 @@ class Client:
 
     def push_job(self, job: Job) -> None:
         """Push a job onto the tier-specific queue."""
-        data = json.dumps({
-            "id": job.id,
-            "session_id": job.session_id,
-            "tool": job.tool,
-            "tier": job.tier.value,
-            "input": job.input,
-            "status": job.status.value,
-            "output": job.output,
-            "error_message": job.error_message,
-            "duration_ms": job.duration_ms,
-            "created_at": job.created_at.isoformat(),
-            "updated_at": job.updated_at.isoformat(),
-        })
+        data = json.dumps(
+            {
+                "id": job.id,
+                "trace_id": get_trace_id(),
+                "session_id": job.session_id,
+                "tool": job.tool,
+                "tier": job.tier.value,
+                "input": job.input,
+                "status": job.status.value,
+                "output": job.output,
+                "error_message": job.error_message,
+                "duration_ms": job.duration_ms,
+                "created_at": job.created_at.isoformat(),
+                "updated_at": job.updated_at.isoformat(),
+            }
+        )
         queue_name = f"queue:{job.tier.value}"
         self._rdb.rpush(queue_name, data)
         log.debug("job pushed", queue=queue_name, job_id=job.id)
@@ -98,24 +104,32 @@ class Client:
             output=data.get("output", ""),
             error_message=data.get("error_message", ""),
             duration_ms=data.get("duration_ms", 0),
-            created_at=datetime.fromisoformat(data["created_at"]) if data.get("created_at") else datetime.utcnow(),
-            updated_at=datetime.fromisoformat(data["updated_at"]) if data.get("updated_at") else datetime.utcnow(),
+            created_at=datetime.fromisoformat(data["created_at"])
+            if data.get("created_at")
+            else datetime.utcnow(),
+            updated_at=datetime.fromisoformat(data["updated_at"])
+            if data.get("updated_at")
+            else datetime.utcnow(),
+            trace_id=data.get("trace_id", ""),
         )
 
     def publish_job_result(self, job_id: str, result: RuntimeResult) -> None:
         """Push a result and set a 5-minute expiry."""
         result_key = f"result:{job_id}"
-        data = json.dumps({
-            "stdout": result.stdout,
-            "stderr": result.stderr,
-            "exit_code": result.exit_code,
-        })
+        data = json.dumps(
+            {
+                "stdout": result.stdout,
+                "stderr": result.stderr,
+                "exit_code": result.exit_code,
+            }
+        )
         self._rdb.rpush(result_key, data)
         self._rdb.expire(result_key, 300)  # 5 minutes
         log.debug("result published", job_id=job_id)
 
 
 # ── Producer (producer.go) ─────────────────────────────────────────────────────
+
 
 class Producer:
     """Pushes JobMessage payloads to a Redis list."""
@@ -125,13 +139,15 @@ class Producer:
         self._stream = stream
 
     def push(self, msg: JobMessage) -> None:
-        data = json.dumps({
-            "job_id": msg.job_id,
-            "tool": msg.tool,
-            "tier": msg.tier,
-            "agent_id": msg.agent_id,
-            "input": msg.input,
-        })
+        data = json.dumps(
+            {
+                "job_id": msg.job_id,
+                "tool": msg.tool,
+                "tier": msg.tier,
+                "agent_id": msg.agent_id,
+                "input": msg.input,
+            }
+        )
         self._rdb.rpush(self._stream, data)
 
 

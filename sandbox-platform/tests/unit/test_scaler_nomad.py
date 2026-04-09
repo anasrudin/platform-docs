@@ -1,4 +1,5 @@
 """Unit tests for sandbox_platform.scaler.nomad.NomadClient."""
+
 from __future__ import annotations
 
 import json
@@ -39,25 +40,33 @@ JOB_RESPONSE = {
 class TestJobCount:
     @pytest.mark.asyncio
     async def test_returns_group_count(self):
-        client, _ = _nomad({
-            ("GET", "/v1/job/fc-agent"): httpx.Response(200, json=JOB_RESPONSE),
-        })
+        client, _ = _nomad(
+            {
+                ("GET", "/v1/job/fc-agent"): httpx.Response(200, json=JOB_RESPONSE),
+            }
+        )
         count = await client.job_count("fc-agent", "agent")
         assert count == 3
 
     @pytest.mark.asyncio
     async def test_raises_on_unknown_group(self):
-        client, _ = _nomad({
-            ("GET", "/v1/job/fc-agent"): httpx.Response(200, json=JOB_RESPONSE),
-        })
+        client, _ = _nomad(
+            {
+                ("GET", "/v1/job/fc-agent"): httpx.Response(200, json=JOB_RESPONSE),
+            }
+        )
         with pytest.raises(KeyError, match="no-such-group"):
             await client.job_count("fc-agent", "no-such-group")
 
     @pytest.mark.asyncio
     async def test_raises_on_non_200(self):
-        client, _ = _nomad({
-            ("GET", "/v1/job/fc-agent"): httpx.Response(404, json={"error": "not found"}),
-        })
+        client, _ = _nomad(
+            {
+                ("GET", "/v1/job/fc-agent"): httpx.Response(
+                    404, json={"error": "not found"}
+                ),
+            }
+        )
         with pytest.raises(RuntimeError, match="job_count"):
             await client.job_count("fc-agent", "agent")
 
@@ -65,9 +74,13 @@ class TestJobCount:
 class TestScaleJob:
     @pytest.mark.asyncio
     async def test_sends_post_to_scale_endpoint(self):
-        client, transport = _nomad({
-            ("POST", "/v1/job/fc-agent/scale"): httpx.Response(200, json={"EvalID": "abc"}),
-        })
+        client, transport = _nomad(
+            {
+                ("POST", "/v1/job/fc-agent/scale"): httpx.Response(
+                    200, json={"EvalID": "abc"}
+                ),
+            }
+        )
         await client.scale_job("fc-agent", "agent", count=5, reason="high load")
         assert len(transport.requests) == 1
         req = transport.requests[0]
@@ -76,9 +89,13 @@ class TestScaleJob:
 
     @pytest.mark.asyncio
     async def test_scale_payload_contains_count_and_group(self):
-        client, transport = _nomad({
-            ("POST", "/v1/job/fc-agent/scale"): httpx.Response(200, json={"EvalID": "abc"}),
-        })
+        client, transport = _nomad(
+            {
+                ("POST", "/v1/job/fc-agent/scale"): httpx.Response(
+                    200, json={"EvalID": "abc"}
+                ),
+            }
+        )
         await client.scale_job("fc-agent", "agent", count=4, reason="utilization low")
         body = json.loads(transport.requests[0].content)
         assert body["Count"] == 4
@@ -86,26 +103,36 @@ class TestScaleJob:
 
     @pytest.mark.asyncio
     async def test_scale_payload_includes_reason(self):
-        client, transport = _nomad({
-            ("POST", "/v1/job/fc-agent/scale"): httpx.Response(200, json={"EvalID": "abc"}),
-        })
+        client, transport = _nomad(
+            {
+                ("POST", "/v1/job/fc-agent/scale"): httpx.Response(
+                    200, json={"EvalID": "abc"}
+                ),
+            }
+        )
         await client.scale_job("fc-agent", "agent", count=2, reason="scale-down test")
         body = json.loads(transport.requests[0].content)
         assert "scale-down test" in body.get("Message", "")
 
     @pytest.mark.asyncio
     async def test_raises_on_non_200(self):
-        client, _ = _nomad({
-            ("POST", "/v1/job/fc-agent/scale"): httpx.Response(500, text="error"),
-        })
+        client, _ = _nomad(
+            {
+                ("POST", "/v1/job/fc-agent/scale"): httpx.Response(500, text="error"),
+            }
+        )
         with pytest.raises(RuntimeError, match="scale_job"):
             await client.scale_job("fc-agent", "agent", count=2)
 
     @pytest.mark.asyncio
     async def test_token_sent_in_header_when_provided(self):
-        transport = _MockTransport({
-            ("POST", "/v1/job/fc-agent/scale"): httpx.Response(200, json={"EvalID": "x"}),
-        })
+        transport = _MockTransport(
+            {
+                ("POST", "/v1/job/fc-agent/scale"): httpx.Response(
+                    200, json={"EvalID": "x"}
+                ),
+            }
+        )
         client = NomadClient(
             address="http://127.0.0.1:4646",
             token="nomad-secret",

@@ -1,11 +1,11 @@
 """Unit tests for sandbox_platform.scaler.metrics."""
+
 from __future__ import annotations
 
 import httpx
 import pytest
 
 from sandbox_platform.scaler.metrics import (
-    AggregateMetrics,
     MetricsCollector,
     NodeMetrics,
     aggregate,
@@ -13,6 +13,7 @@ from sandbox_platform.scaler.metrics import (
 
 
 # ── aggregate() ───────────────────────────────────────────────────────────────
+
 
 class TestAggregate:
     def test_empty_list_returns_zero_aggregate(self):
@@ -60,6 +61,7 @@ class TestAggregate:
 
 # ── MetricsCollector ──────────────────────────────────────────────────────────
 
+
 class _HealthTransport(httpx.AsyncBaseTransport):
     """Returns a canned /health response for each URL."""
 
@@ -82,10 +84,20 @@ def _collector(responses: dict[str, dict], max_pool: int = 4) -> MetricsCollecto
 class TestMetricsCollector:
     @pytest.mark.asyncio
     async def test_collect_returns_metrics_per_node(self):
-        collector = _collector({
-            "http://10.0.0.1:8081": {"status": "ok", "runtime": "fc", "pool_size": 2},
-            "http://10.0.0.2:8081": {"status": "ok", "runtime": "fc", "pool_size": 3},
-        })
+        collector = _collector(
+            {
+                "http://10.0.0.1:8081": {
+                    "status": "ok",
+                    "runtime": "fc",
+                    "pool_size": 2,
+                },
+                "http://10.0.0.2:8081": {
+                    "status": "ok",
+                    "runtime": "fc",
+                    "pool_size": 3,
+                },
+            }
+        )
         nodes = [
             ("n1", "http://10.0.0.1:8081/health"),
             ("n2", "http://10.0.0.2:8081/health"),
@@ -108,10 +120,16 @@ class TestMetricsCollector:
 
     @pytest.mark.asyncio
     async def test_unreachable_node_is_skipped(self):
-        collector = _collector({
-            "http://10.0.0.1:8081": {"status": "ok", "runtime": "fc", "pool_size": 1},
-            # 10.0.0.2 is not in responses → 503 → skipped
-        })
+        collector = _collector(
+            {
+                "http://10.0.0.1:8081": {
+                    "status": "ok",
+                    "runtime": "fc",
+                    "pool_size": 1,
+                },
+                # 10.0.0.2 is not in responses → 503 → skipped
+            }
+        )
         nodes = [
             ("n1", "http://10.0.0.1:8081/health"),
             ("n2", "http://10.0.0.2:8081/health"),
@@ -148,19 +166,29 @@ class TestMetricsCollector:
 
     @pytest.mark.asyncio
     async def test_active_sessions_from_health_response(self):
-        collector = _collector({
-            "http://10.0.0.1:8081": {
-                "status": "ok", "runtime": "fc",
-                "pool_size": 2, "active_sessions": 7,
-            },
-        })
+        collector = _collector(
+            {
+                "http://10.0.0.1:8081": {
+                    "status": "ok",
+                    "runtime": "fc",
+                    "pool_size": 2,
+                    "active_sessions": 7,
+                },
+            }
+        )
         result = await collector.collect([("n1", "http://10.0.0.1:8081/health")])
         assert result[0].active_sessions == 7
 
     @pytest.mark.asyncio
     async def test_active_sessions_defaults_to_zero_when_absent(self):
-        collector = _collector({
-            "http://10.0.0.1:8081": {"status": "ok", "runtime": "fc", "pool_size": 2},
-        })
+        collector = _collector(
+            {
+                "http://10.0.0.1:8081": {
+                    "status": "ok",
+                    "runtime": "fc",
+                    "pool_size": 2,
+                },
+            }
+        )
         result = await collector.collect([("n1", "http://10.0.0.1:8081/health")])
         assert result[0].active_sessions == 0

@@ -2,6 +2,7 @@
 
 Mirrors internal/session/manager.go.
 """
+
 from __future__ import annotations
 
 import json

@@ -3,6 +3,7 @@
 Mirrors runtime/firecracker/pool.go.
 Each VM is single-use; after use it is destroyed and a fresh one is booted.
 """
+
 from __future__ import annotations
 
 import queue
@@ -120,6 +121,7 @@ class VMPool:
 
     def _boot_vm(self, snap: SnapshotPaths) -> FirecrackerVM:
         import os
+
         cid = self._next_cid_value()
         work_dir = os.path.join(self._snapshot_cache_dir, "vms", f"vm-{cid}")
         return new_vm(

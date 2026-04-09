@@ -64,8 +64,16 @@ def main():
                 out({"result": data, "exit_code": 0})
 
         elif op == "write":
-            wb = openpyxl.load_workbook(abs_path) if os.path.exists(abs_path) else openpyxl.Workbook()
-            ws = wb[sheet_name] if sheet_name and sheet_name in wb.sheetnames else wb.active
+            wb = (
+                openpyxl.load_workbook(abs_path)
+                if os.path.exists(abs_path)
+                else openpyxl.Workbook()
+            )
+            ws = (
+                wb[sheet_name]
+                if sheet_name and sheet_name in wb.sheetnames
+                else wb.active
+            )
             cell_ref = inp.get("cell", "A1")
             value = inp.get("value")
             ws[cell_ref] = value

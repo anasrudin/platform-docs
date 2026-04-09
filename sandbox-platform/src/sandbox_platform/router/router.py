@@ -2,6 +2,7 @@
 
 Mirrors internal/router/router.go.
 """
+
 from __future__ import annotations
 
 import threading

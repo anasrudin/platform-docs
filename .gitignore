@@ -3,3 +3,16 @@
 # sandbox-platform build and runtime outputs
 sandbox-platform/bin/*
 !sandbox-platform/bin/.gitkeep
+
+# Python
+.venv/
+*.egg-info/
+dist/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+
+# Binaries
+bin/

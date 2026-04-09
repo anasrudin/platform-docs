@@ -18,14 +18,14 @@ ALIAS="platform-minio"
 
 # ── Install mc if missing ─────────────────────────────────────────────────────
 if ! command -v mc &>/dev/null; then
-    echo "Installing MinIO client (mc)..."
+    printf '{"ts":"%s","service":"data-minio","level":"info","msg":"Installing MinIO client (mc)..."}\n' "$(date -u +%FT%TZ)"
     wget -q https://dl.min.io/client/mc/release/linux-amd64/mc \
         -O /usr/local/bin/mc
     chmod +x /usr/local/bin/mc
 fi
 
 # ── Configure alias ───────────────────────────────────────────────────────────
-echo "Configuring mc alias '${ALIAS}' → ${ENDPOINT}"
+printf '{"ts":"%s","service":"data-minio","level":"info","msg":"Configuring mc alias"}\n' "$(date -u +%FT%TZ)"
 mc alias set "${ALIAS}" "${ENDPOINT}" "${ACCESS_KEY}" "${SECRET_KEY}" --quiet
 
 # ── Create buckets ────────────────────────────────────────────────────────────
@@ -37,10 +37,10 @@ BUCKETS=(
 
 for bucket in "${BUCKETS[@]}"; do
     if mc ls "${ALIAS}/${bucket}" &>/dev/null; then
-        echo "  [skip] bucket already exists: ${bucket}"
+        printf '{"ts":"%s","service":"data-minio","level":"info","msg":"bucket already exists","bucket":"%s"}\n' "$(date -u +%FT%TZ)" "${bucket}"
     else
         mc mb "${ALIAS}/${bucket}"
-        echo "  ✅ created bucket: ${bucket}"
+        printf '{"ts":"%s","service":"data-minio","level":"info","msg":"created bucket","bucket":"%s"}\n' "$(date -u +%FT%TZ)" "${bucket}"
     fi
 done
 
