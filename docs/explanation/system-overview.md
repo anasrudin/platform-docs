@@ -229,7 +229,7 @@ All advanced features are off by default. Safe to run locally without Consul, No
 
 ## Related documents
 
-- [../overview/platform-overview.md](../overview/platform-overview.md)
+- [./platform-overview.md](./platform-overview.md)
 - [../reference/runtime-reference.md](../reference/runtime-reference.md)
 - [../reference/api-spec.md](../reference/api-spec.md)
 - [../how-to/run-locally.md](../how-to/run-locally.md)

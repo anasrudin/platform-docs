@@ -145,4 +145,4 @@ Initial Python migration from Go 1.25. Full parity with the Week 1 Go implementa
 
 ## v0.0.1 — April 5, 2026 (archived)
 
-Week 1 Go implementation. All Go source files have been removed as part of the v0.1.0 migration. See [../migration/go-to-python.md](../migration/go-to-python.md) for the migration record.
+Week 1 Go implementation. All Go source files have been removed as part of the v0.1.0 migration. See [../how-to/migrate-go-to-python.md](../how-to/migrate-go-to-python.md) for the migration record.

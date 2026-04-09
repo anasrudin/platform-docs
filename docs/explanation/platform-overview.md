@@ -53,13 +53,13 @@ A caller submits an execution request to the API with a tool name and input. The
 
 | Need | Document |
 |---|---|
-| First run — install, start, execute | [../product/getting-started.md](../product/getting-started.md) |
-| Full system architecture | [../architecture/system-overview.md](../architecture/system-overview.md) |
+| First run — install, start, execute | [../tutorials/getting-started.md](../tutorials/getting-started.md) |
+| Full system architecture | [./system-overview.md](./system-overview.md) |
 | All HTTP API endpoints | [../reference/api-spec.md](../reference/api-spec.md) |
 | Runtime internals and tiers | [../reference/runtime-reference.md](../reference/runtime-reference.md) |
 | Run locally (Python) | [../how-to/run-locally.md](../how-to/run-locally.md) |
 | Deploy to a cluster | [../how-to/deploy.md](../how-to/deploy.md) |
 | Diagnose problems | [../how-to/troubleshooting.md](../how-to/troubleshooting.md) |
-| Changelog | [../process/release-notes.md](../process/release-notes.md) |
-| Test guide | [../process/test-guide.md](../process/test-guide.md) |
+| Changelog | [../operations/release-notes.md](../operations/release-notes.md) |
+| Test guide | [../how-to/run-tests.md](../how-to/run-tests.md) |
 | Delivery milestones | [../operations/roadmap.md](../operations/roadmap.md) |
