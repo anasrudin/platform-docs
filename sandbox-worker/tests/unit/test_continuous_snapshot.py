@@ -191,3 +191,56 @@ class TestSessionServiceSnapshotMode:
         svc = SessionService()
         result = await svc.create("wasm", "invalid_mode")
         assert result["snapshot_mode"] == "clean"
+
+
+# ── ExecutionService snapshot integration ─────────────────────────────────────
+
+from models.job import RuntimeResult
+from service.execution import ExecutionService
+
+
+def _make_exec_svc(exit_code=0, downloader=None):
+    """ExecutionService with a mock VM pool."""
+    mock_result = RuntimeResult(stdout="ok", stderr="", exit_code=exit_code)
+    mock_vm = MagicMock()
+    mock_vm.run.return_value = mock_result
+
+    mock_mgr = MagicMock()
+    mock_mgr.acquire.return_value = mock_vm
+    mock_mgr._cache_dir = "/tmp/fake-cache"
+
+    return ExecutionService(lifecycle_mgr=mock_mgr, downloader=downloader)
+
+
+class TestExecutionSnapshotIntegration:
+    def test_clean_mode_does_not_save_snapshot(self):
+        downloader = MagicMock()
+        svc = _make_exec_svc(exit_code=0, downloader=downloader)
+        svc.execute({"tool": "python_run", "input": {}, "snapshot_mode": "clean", "session_id": "s1"})
+        downloader.save_session_snapshot.assert_not_called()
+
+    def test_continuous_mode_saves_snapshot_on_success(self):
+        downloader = MagicMock()
+        downloader.load_session_snapshot.return_value = None
+        svc = _make_exec_svc(exit_code=0, downloader=downloader)
+        svc.execute({"tool": "python_run", "input": {}, "snapshot_mode": "continuous", "session_id": "s2"})
+        downloader.save_session_snapshot.assert_called_once_with("s2", "/tmp/fake-cache")
+
+    def test_continuous_mode_does_not_save_on_failure(self):
+        downloader = MagicMock()
+        downloader.load_session_snapshot.return_value = None
+        svc = _make_exec_svc(exit_code=1, downloader=downloader)
+        svc.execute({"tool": "python_run", "input": {}, "snapshot_mode": "continuous", "session_id": "s3"})
+        downloader.save_session_snapshot.assert_not_called()
+
+    def test_continuous_mode_calls_load_before_run(self):
+        downloader = MagicMock()
+        downloader.load_session_snapshot.return_value = None
+        svc = _make_exec_svc(exit_code=0, downloader=downloader)
+        svc.execute({"tool": "python_run", "input": {}, "snapshot_mode": "continuous", "session_id": "s4"})
+        downloader.load_session_snapshot.assert_called_once_with("s4")
+
+    def test_no_downloader_does_not_crash_in_continuous_mode(self):
+        svc = _make_exec_svc(exit_code=0, downloader=None)
+        result = svc.execute({"tool": "python_run", "input": {}, "snapshot_mode": "continuous", "session_id": "s5"})
+        assert result["status"] == "completed"
