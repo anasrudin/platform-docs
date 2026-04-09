@@ -23,7 +23,7 @@ docker --version
 docker compose version
 
 # uv — fast Python package installer
-pip install uv
+brew install uv
 
 # jq — JSON pretty-printer for curl responses
 brew install jq
@@ -47,7 +47,7 @@ brew install minio/stable/mc
 git clone <repo-url>
 cd platform-docs/sandbox-worker
 
-python3 -m venv .venv
+uv venv .venv
 source .venv/bin/activate
 
 uv pip install -e ".[dev]"
@@ -56,9 +56,8 @@ uv pip install -e ".[dev]"
 Verify:
 
 ```bash
-fc-agent --help      # prints uvicorn help
 platform-api --help  # prints uvicorn help
-pytest --collect-only | tail -5   # must show collected tests, no errors
+pytest --collect-only -q 2>&1 | tail -10   # must show collected tests, no errors
 ```
 
 Troubleshoot: if `fc-agent: command not found`, ensure the venv is activated (`source .venv/bin/activate`).
@@ -69,6 +68,8 @@ Troubleshoot: if `fc-agent: command not found`, ensure the venv is activated (`s
 
 Run from the `services/` directory:
 
+> **Note:** Do not use `make infra-up` from `sandbox-worker/` — the Makefile target runs `docker compose up -d` relative to `sandbox-worker/` which has no compose file. Use the manual path below.
+
 ```bash
 cd ../services
 docker compose up -d
@@ -77,6 +78,7 @@ docker compose up -d
 Verify all three services are healthy:
 
 ```bash
+# Still in services/
 docker compose ps
 ```
 
@@ -112,7 +114,10 @@ Expected:
 ```json
 {
   "status": "healthy",
-  "version": "0.1.0-local"
+  "version": "0.2.0",
+  "services": {
+    "vm_pool": "healthy (pool_size=2)"
+  }
 }
 ```
 
