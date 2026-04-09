@@ -3,7 +3,6 @@
 
 VENV        := .venv
 PYTHON      := $(VENV)/bin/python
-PIP         := $(VENV)/bin/pip
 PYTEST      := $(VENV)/bin/pytest
 UVICORN     := $(VENV)/bin/uvicorn
 
@@ -18,8 +17,8 @@ all: install
 
 install:
 	@echo "Setting up Python virtual environment..."
-	python3 -m venv $(VENV)
-	$(PIP) install -q -e ".[dev]"
+	uv venv $(VENV)
+	uv pip install -e ".[dev]"
 	@echo "Done. Activate with: source $(VENV)/bin/activate"
 
 # ── Development ───────────────────────────────────────────────────────────────
@@ -98,6 +97,6 @@ nomad-start:
 
 clean: stop
 	@echo "Cleaning up..."
-	rm -rf $(VENV) sandbox_platform.egg-info
+	rm -rf $(VENV) uv.lock sandbox_platform.egg-info
 	find . -type d -name __pycache__ -not -path './.git/*' -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name .pytest_cache -exec rm -rf {} + 2>/dev/null || true

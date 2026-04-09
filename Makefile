@@ -241,8 +241,7 @@ run-python:
 # ── Worker (sandbox-worker/) ──────────────────────────────────────────────────
 
 worker-install:
-	cd sandbox-worker && python3 -m venv .venv && \
-		.venv/bin/pip install -q -e ".[dev]"
+	cd sandbox-worker && uv venv .venv && uv pip install -e ".[dev]"
 
 worker-test:
 	cd sandbox-worker && .venv/bin/pytest tests/unit/ -v
