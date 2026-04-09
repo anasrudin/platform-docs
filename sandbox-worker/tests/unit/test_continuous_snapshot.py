@@ -9,6 +9,16 @@ from unittest.mock import MagicMock, patch, call
 import pytest
 
 from orchestrator.snapshot import SnapshotDownloader, SnapshotPaths
+from adapters.tracing import init_tracer, reset_tracer
+from service.session import SessionService
+
+
+@pytest.fixture(autouse=True)
+def tracer_setup():
+    reset_tracer()
+    init_tracer(driver="noop")
+    yield
+    reset_tracer()
 
 
 def _make_downloader(tmp_path, storage=None):
@@ -164,17 +174,6 @@ class TestDeleteSessionSnapshot:
 
 # ── SessionService snapshot_mode tests ───────────────────────────────────────
 
-from adapters.tracing import init_tracer, reset_tracer
-from service.session import SessionService
-
-
-@pytest.fixture(autouse=True)
-def tracer_setup():
-    reset_tracer()
-    init_tracer(driver="noop")
-    yield
-    reset_tracer()
-
 
 class TestSessionServiceSnapshotMode:
     async def test_default_is_clean(self):
@@ -234,11 +233,16 @@ class TestExecutionSnapshotIntegration:
         downloader.save_session_snapshot.assert_not_called()
 
     def test_continuous_mode_calls_load_before_run(self):
+        fake_paths = MagicMock()
         downloader = MagicMock()
-        downloader.load_session_snapshot.return_value = None
+        downloader.load_session_snapshot.return_value = fake_paths
         svc = _make_exec_svc(exit_code=0, downloader=downloader)
         svc.execute({"tool": "python_run", "input": {}, "snapshot_mode": "continuous", "session_id": "s4"})
         downloader.load_session_snapshot.assert_called_once_with("s4")
+        # Verify paths were forwarded to vm.run via job.snapshot_paths
+        call_args = svc._mgr.acquire.return_value.run.call_args
+        job_passed = call_args[0][0]  # first positional arg
+        assert job_passed.snapshot_paths is fake_paths
 
     def test_no_downloader_does_not_crash_in_continuous_mode(self):
         svc = _make_exec_svc(exit_code=0, downloader=None)

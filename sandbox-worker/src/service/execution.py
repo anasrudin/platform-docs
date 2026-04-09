@@ -28,7 +28,7 @@ class ExecutionService:
 
         input_data = body.get("input") or {}
         session_id = body.get("session_id") or str(uuid.uuid4())
-        snapshot_mode = body.get("snapshot_mode", "clean")
+        snapshot_mode = (body.get("snapshot_mode") or "clean").lower()
 
         with tracer.start_span("service.execution.run", {"tool": tool, "session_id": session_id}) as span:
             job = Job(
@@ -42,7 +42,7 @@ class ExecutionService:
 
             # Continuous snapshot: load existing session snapshot before run
             if snapshot_mode == "continuous" and self._downloader:
-                self._downloader.load_session_snapshot(session_id)
+                job.snapshot_paths = self._downloader.load_session_snapshot(session_id)
 
             start = time.monotonic()
             vm = self._mgr.acquire(timeout=30.0)
