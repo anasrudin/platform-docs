@@ -240,3 +240,217 @@ memory.bin  meta.json  vmstate.bin
 ```
 
 Troubleshoot: if download fails with an error about `mc` not found in PATH, the `SnapshotStore` falls back to HTTP download directly from `MINIO_ENDPOINT`. Ensure MinIO is reachable at `http://localhost:9000`.
+
+---
+
+## 6. Deploy the Nomad job
+
+**6a. Start a local single-node Nomad dev cluster**
+
+In a new terminal:
+
+```bash
+sudo nomad agent -dev \
+  -bind=0.0.0.0 \
+  -network-interface=lo0
+```
+
+Wait for `Nomad agent started!` in output, then verify:
+
+```bash
+nomad node status
+```
+
+Expected: one node with status `ready`.
+
+**6b. Adjust the job for local dev**
+
+The debug job at `services/controller/nomad/jobs/debug-python-runtime.nomad` uses `raw_exec` with `command = "/usr/local/bin/fc-agent"`. On macOS the binary lives in your venv, not `/usr/local/bin/`. Create a local override:
+
+```bash
+VENV_PATH=$(pwd)/sandbox-worker/.venv
+
+cat > /tmp/sandbox-worker-macos.nomad <<EOF
+job "sandbox-worker-macos" {
+  datacenters = ["dc1"]
+  type        = "service"
+
+  group "fc-agent" {
+    count = 1
+
+    task "fc-agent" {
+      driver = "raw_exec"
+
+      config {
+        command = "${VENV_PATH}/bin/fc-agent"
+      }
+
+      env {
+        FC_MODE            = "sim"
+        SNAPSHOT_NAME      = "python-v1"
+        SNAPSHOT_CACHE_DIR = "/tmp/sandbox-cache"
+        MINIO_ENDPOINT     = "http://127.0.0.1:9000"
+        MINIO_ACCESS_KEY   = "minioadmin"
+        MINIO_SECRET_KEY   = "minioadmin"
+        MINIO_BUCKET       = "platform-snapshots"
+      }
+
+      resources {
+        cpu    = 500
+        memory = 512
+      }
+    }
+  }
+}
+EOF
+```
+
+> **Known issue:** `fc-agent` currently fails to start (missing `agents` module — see section 5 warning). The Nomad allocation will show `failed`. This section documents the intended deployment workflow.
+
+**6c. Run the job**
+
+```bash
+nomad job run /tmp/sandbox-worker-macos.nomad
+```
+
+Expected:
+
+```
+==> Monitoring evaluation "..."
+    Allocation "..." created: node "...", group "fc-agent"
+    Evaluation status changed: "pending" -> "complete"
+==> Evaluation complete
+```
+
+**6d. Check allocation status**
+
+```bash
+nomad job status sandbox-worker-macos
+```
+
+Expected: `Status = running` (or `failed` if fc-agent module issue is not resolved).
+
+View logs:
+
+```bash
+ALLOC_ID=$(nomad job status sandbox-worker-macos | grep -E "running|failed" | awk '{print $1}' | head -1)
+nomad alloc logs $ALLOC_ID fc-agent
+```
+
+Troubleshoot: if `raw_exec` driver is disabled, add `plugin "raw_exec" { config { enabled = true } }` to your Nomad config or use `-dev` mode which enables it by default.
+
+---
+
+## 7. Run Python code end-to-end
+
+> **Note:** This section uses the `platform-api` directly. The fc-agent Nomad deployment in section 6 is separate — `platform-api` has its own in-process VM lifecycle manager and does not depend on the Nomad-deployed fc-agent to handle API requests.
+
+**7a. Ensure platform-api is running**
+
+From section 3, `platform-api` should be running in a terminal with `FC_MODE=sim`. If not, restart it:
+
+```bash
+cd sandbox-worker
+source .venv/bin/activate
+FC_MODE=sim \
+  SNAPSHOT_NAME=python-v1 \
+  SNAPSHOT_CACHE_DIR=/tmp/sandbox-cache \
+  MINIO_ENDPOINT=http://localhost:9000 \
+  MINIO_ACCESS_KEY=minioadmin \
+  MINIO_SECRET_KEY=minioadmin \
+  MINIO_BUCKET=platform-snapshots \
+  platform-api
+```
+
+**7b. Create a session**
+
+```bash
+SESSION=$(curl -s -X POST http://localhost:8080/sessions \
+  -H "Content-Type: application/json" \
+  -d '{"runtime": "microvm"}' | jq -r '.session_id')
+echo "Session: $SESSION"
+```
+
+Expected: `Session: sess_<uuid>`
+
+**7c. Execute Python code**
+
+```bash
+curl -s -X POST http://localhost:8080/execute \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"session_id\": \"$SESSION\",
+    \"tool\": \"python_run\",
+    \"input\": {\"code\": \"print('hello from sandbox')\"}
+  }" | jq
+```
+
+Expected response (sim mode returns mock output):
+
+```json
+{
+  "job_id": "...",
+  "session_id": "...",
+  "status": "completed",
+  "output": "hello from sandbox\n",
+  "error_message": null,
+  "duration_ms": 5
+}
+```
+
+**7d. Execute with computation**
+
+```bash
+curl -s -X POST http://localhost:8080/execute \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"session_id\": \"$SESSION\",
+    \"tool\": \"python_run\",
+    \"input\": {\"code\": \"result = sum(range(1000000)); print(f'Sum: {result}')\"}
+  }" | jq '.output'
+```
+
+Expected: `"Sum: 499999500000\n"`
+
+> **Note:** In sim mode, output is simulated by the runtime layer — the actual Python code is not executed inside a VM.
+
+---
+
+## 8. Cleanup
+
+Stop the Nomad job:
+
+```bash
+nomad job stop sandbox-worker-macos
+```
+
+Stop `platform-api` (Ctrl+C in its terminal, or):
+
+```bash
+pkill -f "platform-api"
+```
+
+Stop infrastructure:
+
+```bash
+cd services
+docker compose down
+```
+
+Stop the Nomad dev agent (Ctrl+C in its terminal, or):
+
+```bash
+sudo pkill nomad
+```
+
+Remove local snapshot cache and temp files:
+
+```bash
+rm -rf /tmp/sandbox-cache /tmp/python-v1 /tmp/sandbox-worker-macos.nomad
+```
+
+Remove MinIO snapshot:
+
+```bash
+mc rm --recursive --force local/platform-snapshots/python-v1
+```
