@@ -12,7 +12,3 @@ services:
       - "4318:4318"     # OTEL HTTP
     networks:
       - platform-net
-
-networks:
-  platform-net:
-    external: true
