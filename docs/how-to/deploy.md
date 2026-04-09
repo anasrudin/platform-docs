@@ -166,6 +166,6 @@ Deployment should be considered successful when all of the following are true:
 ## Related documents
 
 - [run-locally.md](./run-locally.md)
-- [../architecture/system-overview.md](../architecture/system-overview.md)
+- [../explanation/system-overview.md](../explanation/system-overview.md)
 - [../reference/runtime-reference.md](../reference/runtime-reference.md)
 - [../operations/roadmap.md](../operations/roadmap.md)

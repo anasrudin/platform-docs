@@ -284,4 +284,4 @@ pytest --cov=sandbox_platform --cov-report=term-missing
 
 - [run-locally.md](./run-locally.md)
 - [../reference/api-spec.md](../reference/api-spec.md)
-- [../process/release-notes.md](../process/release-notes.md)
+- [../operations/release-notes.md](../operations/release-notes.md)

@@ -259,7 +259,7 @@ All advanced features are off by default. Enable them with environment variables
 
 | Goal | Document |
 |---|---|
-| Understand the full system | [../architecture/system-overview.md](../architecture/system-overview.md) |
+| Understand the full system | [../explanation/system-overview.md](../explanation/system-overview.md) |
 | See all API endpoints | [../reference/api-spec.md](../reference/api-spec.md) |
 | Deploy to a cluster | [../how-to/deploy.md](../how-to/deploy.md) |
 | Diagnose problems | [../how-to/troubleshooting.md](../how-to/troubleshooting.md) |

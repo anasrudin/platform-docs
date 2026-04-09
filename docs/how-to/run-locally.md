@@ -285,7 +285,7 @@ make clean   # remove __pycache__, *.egg-info, build artifacts
 
 ## Related documents
 
-- [../product/getting-started.md](../product/getting-started.md)
+- [../tutorials/getting-started.md](../tutorials/getting-started.md)
 - [../reference/api-spec.md](../reference/api-spec.md)
 - [./troubleshooting.md](./troubleshooting.md)
 - [./deploy.md](./deploy.md)
