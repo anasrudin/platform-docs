@@ -195,7 +195,7 @@ Troubleshoot: if `mc alias set` fails, check MinIO is up (`docker compose ps` fr
 
 `SnapshotStore.ensure()` downloads from MinIO to a local cache on first access, then serves from disk on subsequent requests. The cache dir is `SNAPSHOT_CACHE_DIR` (default `/var/sandbox/cache`).
 
-> **Known issue:** The `fc-agent` entry point currently fails to start because the `agents` package is not yet present in `src/`. Running `fc-agent` will produce `ModuleNotFoundError: No module named 'agents'`. Section 5 documents the intended workflow for when the package is available. To verify snapshot download now, you can exercise `SnapshotStore` directly via the platform API (see section 7).
+> **Known issue:** The `fc-agent` entry point currently fails to start because the `agents` package is not yet present in `src/`. Running `fc-agent` will produce `ModuleNotFoundError: No module named 'agents'`. Section 5 documents the intended workflow for when the package is available. To verify snapshot download now, you can exercise `SnapshotStore` directly via the platform API.
 
 **5a. Start fc-agent with snapshot env vars**
 
