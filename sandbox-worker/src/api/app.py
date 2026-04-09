@@ -28,7 +28,7 @@ from adapters.storage.local import PackageStore, LocalStorage
 from api.middleware.auth import TenantAuthMiddleware, auth_config_from_env
 from api.middleware.request_id import RequestIDMiddleware
 from api.middleware.tracing import TracingMiddleware
-from api.routes import artifact, execute, health, hibernation, package, session, streaming, workflow, workspace
+from api.routes import artifact, execute, health, hibernation, package, session, snapshot, streaming, workflow, workspace
 from config.settings import settings
 from orchestrator.hibernation import HibernationOrchestrator
 from orchestrator.lifecycle import VMLifecycleManager
@@ -87,6 +87,7 @@ async def lifespan(app: FastAPI):
     )
     lifecycle_mgr.start()
     _state["lifecycle_mgr"] = lifecycle_mgr
+    _state["snapshot_downloader"] = lifecycle_mgr._downloader
 
     # Artifact store
     art_cfg = ArtifactConfig.from_env()
@@ -109,7 +110,7 @@ async def lifespan(app: FastAPI):
     # Services
     _state["health_svc"] = HealthService(lifecycle_mgr)
     _state["session_svc"] = SessionService()
-    _state["exec_svc"] = ExecutionService(lifecycle_mgr)
+    _state["exec_svc"] = ExecutionService(lifecycle_mgr, downloader=lifecycle_mgr._downloader)
     _state["artifact_svc"] = ArtifactService(art_store)
     _state["package_svc"] = PackageService(PackageStore(local_dir=pkg_local_dir))
 
@@ -189,6 +190,7 @@ def create_app() -> FastAPI:
     app.include_router(streaming.register(_state))
     app.include_router(workspace.register(_state))
     app.include_router(workflow.register(_state))
+    app.include_router(snapshot.register(_state))
 
     return app
 
