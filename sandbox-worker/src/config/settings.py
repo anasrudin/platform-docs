@@ -6,7 +6,6 @@ Import: `from config.settings import settings`
 from __future__ import annotations
 
 import os
-import socket
 from dataclasses import dataclass, field
 
 
