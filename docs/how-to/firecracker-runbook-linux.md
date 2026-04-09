@@ -539,7 +539,7 @@ Expected: `Session: <uuid>` (e.g. `3f7b2c1d-e4f5-...`)
 > ```json
 > {
 >   "session_id": "3f7b2c1d-e4f5-...",
->   "runtime": "firecracker",
+>   "runtime": "microvm",
 >   "status": "active",
 >   "snapshot_mode": "clean"
 > }
