@@ -1,177 +1,310 @@
-# platform-docs — Root Makefile
+# sandbox-platform — root Makefile
+# Jalankan semua perintah dari repo root: platform-docs/
 # ─────────────────────────────────────────────────────────────────────────────
 
-SERVICES := consul load-balancer nomad-worker data
-VENV     := .venv
-UV       := uv
+REGISTRY        ?= localhost:5000
+VERSION         ?= latest
+SNAPSHOT_NAME   ?= python-v1
+SNAPSHOT_DIR    ?= /tmp/snapshots/$(SNAPSHOT_NAME)
+SNAPSHOT_ROOTFS ?= $(SNAPSHOT_DIR)/rootfs.ext4
+SNAPSHOT_PARENT_DIR ?= $(patsubst %/,%,$(dir $(SNAPSHOT_DIR)))
+MINIO_ENDPOINT  ?= http://localhost:9000
+NODE1_IP        ?= localhost
 
-.PHONY: all help
+.PHONY: help \
+        obs-up obs-down \
+        services-up services-down services-status \
+        services-data services-controller services-monitoring \
+        setup \
+        cluster-setup cluster-start cluster-status \
+        snapshot-rootfs snapshot-create snapshot-upload snapshot-build \
+        image-build image-push image-load \
+        deploy deploy-status deploy-logs \
+        run-python health \
+        worker-install worker-test worker-lint \
+        clean
 
-all: bootstrap
+# ── Help ──────────────────────────────────────────────────────────────────────
 
-# ── §1 Development workflow ──────────────────────────────────────────────────
-
-## obs-up: Start the observability stack (Loki + Grafana)
-obs-up:
-	@docker compose -f docker/obs/compose.obs.yaml --profile obs up -d
-
-## obs-down: Stop the observability stack
-obs-down:
-	@docker compose -f docker/obs/compose.obs.yaml --profile obs down
-
-## dev: Start the full stack
-dev: infra-up
-	@echo "Starting full stack..."
-	@$(UV) run platform-api & echo $$! > bin/api.pid
-	@$(UV) run wasm-agent & echo $$! > bin/wasm.pid
-	@$(UV) run fc-agent & echo $$! > bin/fc.pid
-	@$(UV) run gui-agent & echo $$! > bin/gui.pid
-	@echo "All services running. Use 'make dev-down' to stop."
-
-## dev-down: Stop the full stack
-dev-down: infra-down
-	@echo "Stopping services..."
-	@-[ -f bin/api.pid  ] && kill $$(cat bin/api.pid)  2>/dev/null; rm -f bin/api.pid
-	@-[ -f bin/wasm.pid ] && kill $$(cat bin/wasm.pid) 2>/dev/null; rm -f bin/wasm.pid
-	@-[ -f bin/fc.pid   ] && kill $$(cat bin/fc.pid)   2>/dev/null; rm -f bin/fc.pid
-	@-[ -f bin/gui.pid  ] && kill $$(cat bin/gui.pid)  2>/dev/null; rm -f bin/gui.pid
-
-## bootstrap: Initialize the development environment
-bootstrap:
-	@echo "Bootstrapping repository..."
-	@$(UV) sync
-	@mkdir -p bin
-
-## sync: Re-sync dependencies
-sync:
-	@$(UV) sync
-
-# ── §2 Testing & quality ─────────────────────────────────────────────────────
-
-## test: Run all tests
-test:
-	@$(UV) run pytest
-
-## lint: Run linting
-lint:
-	@$(UV) run ruff check .
-
-## fmt: Format code
-fmt:
-	@$(UV) run ruff format .
-
-## typecheck: Run type checking
-typecheck:
-	@$(UV) run mypy .
-
-# ── §3 Documentation ─────────────────────────────────────────────────────────
-
-## docs: Build documentation
-docs:
-	@echo "Building documentation..."
-
-## docs-serve: Serve documentation locally
-docs-serve:
-	@echo "Serving documentation..."
-
-## docs-lint: Lint documentation
-docs-lint:
-	@echo "Linting documentation..."
-
-# ── §4 Infrastructure ────────────────────────────────────────────────────────
-
-## infra-up: Start all infrastructure services
-infra-up:
-	@for svc in $(SERVICES); do $(MAKE) -C src/$$svc up; done
-
-## consul-up: Start Consul
-consul-up:
-	@$(MAKE) -C src/consul up
-
-## infra-verify: Verify infrastructure health
-infra-verify:
-	@for svc in $(SERVICES); do $(MAKE) -C src/$$svc status; done
-
-# ── §5 Database management ───────────────────────────────────────────────────
-
-## db-migrate: Run database migrations
-db-migrate:
-	@echo "Running migrations..."
-	@psql -h localhost -U platform -d platform -f src/data/db/migrations/001_init.sql
-
-## db-seed: Seed database with fixture data
-db-seed:
-	@echo "Seeding database (no seeds defined yet)..."
-
-## minio-buckets: Create MinIO buckets
-minio-buckets:
-	@$(MAKE) -C src/data up
-	@src/data/minio/init-buckets.sh
-
-# ── §6 Utility & cleanup ─────────────────────────────────────────────────────
-
-## clean: Remove generated outputs
-clean:
-	@echo "Cleaning up..."
-	@for svc in $(SERVICES); do $(MAKE) -C src/$$svc clean; done
-	@rm -rf $(VENV) .pytest_cache .ruff_cache .mypy_cache bin
-	@find . -type d -name "__pycache__" -exec rm -rf {} +
-
-## doctor: Check system dependencies
-doctor:
-	@which uv || (echo "uv not found. Please install it: https://astral.sh/uv/install.sh" && exit 1)
-	@which docker || (echo "docker not found" && exit 1)
-	@echo "Everything looks good."
-
-## update-deps: Upgrade all dependencies
-update-deps:
-	@$(UV) lock --upgrade
-
-# ── §7 Debug ─────────────────────────────────────────────────────────────────
-
-## logs: Tail logs for one service, optionally filtered by level
-##       Usage: make logs SERVICE=consul [LEVEL=error]
-logs:
-	@[ -n "$(SERVICE)" ] || { echo "Usage: make logs SERVICE=<name> [LEVEL=error]"; exit 1; }
-	@docker compose logs -f --no-log-prefix $(SERVICE) \
-		| jq -r 'select($(if $(LEVEL),.level=="$(LEVEL)",true)) | "\(.ts) \(.level) \(.msg)"'
-
-## trace: Pull all log lines for one trace ID across every service, sorted by time
-##        Usage: make trace ID=abc-123
-trace:
-	@[ -n "$(ID)" ] || { echo "Usage: make trace ID=<trace-id>"; exit 1; }
-	@docker compose logs --no-log-prefix 2>/dev/null \
-		| jq -r 'select(.trace_id=="$(ID)") | "\(.ts) [\(.service)] \(.level) \(.msg)"' \
-		| sort
-
-## shell-db: Open a psql prompt in the running postgres container
-shell-db:
-	@docker compose exec postgres psql -U platform platform
-
-## shell-redis: Open a redis-cli prompt in the running redis container
-shell-redis:
-	@docker compose exec redis redis-cli
-
-## health: Poll /health on every service and print a status table
-health:
-	@printf "%-20s %-8s %s\n" SERVICE STATUS TRACE_ID
-	@for svc in api:8080 consul:8500 lb:80; do \
-		name=$${svc%%:*}; port=$${svc##*:}; \
-		resp=$$(curl -sf http://localhost:$$port/health 2>/dev/null); \
-		status=$$(echo $$resp | jq -r '.status // "down"'); \
-		trace=$$(curl -sI http://localhost:$$port/health 2>/dev/null | grep -i x-trace-id | awk "{print \$$2}" | tr -d "\r"); \
-		printf "%-20s %-8s %s\n" $$name $$status "$${trace:-(none)}"; \
-	done
-
-## debug-nomad: Show logs and alloc status for a Nomad job
-##              Usage: make debug-nomad JOB=wasm-agent
-debug-nomad:
-	@[ -n "$(JOB)" ] || { echo "Usage: make debug-nomad JOB=<job-name>"; exit 1; }
-	nomad job status $(JOB)
-	nomad alloc logs -job $(JOB)
-
-## help: Show this help message
 help:
-	@echo "Usage: make [target]"
 	@echo ""
-	@grep -E '^## ' $(MAKEFILE_LIST) | sed -e 's/## //g' -e 's/: /	/g' | expand -t 20
+	@echo "sandbox-platform — available targets"
+	@echo "─────────────────────────────────────────────────────"
+	@echo ""
+	@echo "  Observability:"
+	@echo "    obs-up               Start Loki + Grafana"
+	@echo "    obs-down             Stop Loki + Grafana"
+	@echo ""
+	@echo "  Services (entity data + controller):"
+	@echo "    services-up          Start consul, minio, postgres via docker compose"
+	@echo "    services-down        Stop all services"
+	@echo "    services-status      Cek status semua services"
+	@echo ""
+	@echo "  Cluster:"
+	@echo "    cluster-setup        Setup semua node (Nomad + Consul + Firecracker)"
+	@echo "    cluster-start        Start Nomad cluster"
+	@echo "    cluster-status       Lihat status node Nomad"
+	@echo ""
+	@echo "  Snapshot (Firecracker VM):"
+	@echo "    snapshot-rootfs      Build rootfs ext4 dengan Python 3.11"
+	@echo "    snapshot-create      Boot VM dan ambil snapshot"
+	@echo "    snapshot-upload      Upload snapshot ke MinIO"
+	@echo "    snapshot-build       Jalankan semua: rootfs + create + upload"
+	@echo ""
+	@echo "  Docker images:"
+	@echo "    image-build          Build sandbox-base + sandbox-fc-agent + sandbox-gui-agent"
+	@echo "    image-push           Push semua image ke registry (REGISTRY=$(REGISTRY))"
+	@echo "    image-load           Load image ke semua Nomad node (tanpa registry)"
+	@echo ""
+	@echo "  Deploy:"
+	@echo "    deploy               Deploy Nomad job sandbox-worker"
+	@echo "    deploy-status        Status Nomad job"
+	@echo "    deploy-logs          Lihat logs worker terbaru"
+	@echo ""
+	@echo "  Test:"
+	@echo "    run-python           Kirim POST /execute dengan python_run"
+	@echo "    health               Cek health semua worker"
+	@echo ""
+	@echo "  Worker (sandbox-worker/):"
+	@echo "    worker-install       Install Python deps"
+	@echo "    worker-test          Jalankan pytest"
+	@echo "    worker-lint          Jalankan ruff/mypy"
+	@echo ""
+	@echo "  Misc:"
+	@echo "    clean                Hapus build artifacts"
+	@echo ""
+	@echo "  Variables (override via env):"
+	@echo "    REGISTRY=$(REGISTRY)"
+	@echo "    VERSION=$(VERSION)"
+	@echo "    SNAPSHOT_NAME=$(SNAPSHOT_NAME)"
+	@echo "    MINIO_ENDPOINT=$(MINIO_ENDPOINT)"
+	@echo "    NODE1_IP=$(NODE1_IP)"
+	@echo ""
+
+# ── Services ──────────────────────────────────────────────────────────────────
+
+obs-up:
+	@echo ">>> Starting observability stack (Loki + Grafana)..."
+	docker compose -f docker/obs/compose.obs.yaml --profile obs up -d
+
+obs-down:
+	docker compose -f docker/obs/compose.obs.yaml --profile obs down
+
+services-data:
+	@echo ">>> Starting data services (postgres, redis, minio)..."
+	docker network create platform-net 2>/dev/null || true
+	cd services && docker compose -f data/docker-compose.yml up -d
+
+services-controller:
+	@echo ">>> Starting controller services (consul)..."
+	docker network create platform-net 2>/dev/null || true
+	cd services && docker compose -f controller/docker-compose.yml up -d
+
+services-monitoring:
+	@echo ">>> Starting monitoring services (jaeger)..."
+	docker network create platform-net 2>/dev/null || true
+	cd services && docker compose -f monitoring/docker-compose.yml up -d
+
+services-up:
+	@echo ">>> Starting all services..."
+	docker network create platform-net 2>/dev/null || true
+	cd services && docker compose up -d
+	@sleep 5
+	@$(MAKE) services-status
+
+services-down:
+	cd services && docker compose down
+
+services-status:
+	@echo "--- Consul:"
+	@curl -sf http://$(NODE1_IP):8500/v1/status/leader 2>/dev/null \
+		&& echo "  consul: OK" || echo "  consul: DOWN"
+	@echo "--- MinIO:"
+	@curl -sf http://$(NODE1_IP):9000/minio/health/live 2>/dev/null \
+		&& echo "  minio: OK" || echo "  minio: DOWN"
+	@echo "--- Postgres:"
+	@docker exec $$(docker ps -qf name=postgres) \
+		pg_isready -U postgres 2>/dev/null \
+		&& echo "  postgres: OK" || echo "  postgres: DOWN"
+
+setup:
+	@echo ">>> [1/4] Copying .env.example → sandbox-worker/.env (jika belum ada)..."
+	@[ -f sandbox-worker/.env ] || cp sandbox-worker/.env.example sandbox-worker/.env
+	@echo ">>> [2/4] Installing worker deps..."
+	cd sandbox-worker && uv venv .venv && uv pip install -e ".[dev]"
+	@echo ">>> [3/4] Starting data + monitoring services..."
+	$(MAKE) services-data services-monitoring
+	@echo ">>> [4/4] Checking service health..."
+	@sleep 5
+	@$(MAKE) services-status
+	@echo ""
+	@echo "Setup selesai. Langkah berikutnya:"
+	@echo "  make worker-run   — start platform API"
+	@echo "  open http://localhost:16686  — Jaeger UI"
+
+# ── Cluster ───────────────────────────────────────────────────────────────────
+
+cluster-setup:
+	@echo ">>> Setting up nodes..."
+	sudo bash services/controller/scripts/setup-control-node.sh
+	sudo bash services/controller/scripts/setup-firecracker.sh
+
+cluster-start:
+	@echo ">>> Starting Nomad cluster..."
+	bash services/controller/scripts/start-nomad-cluster.sh
+
+cluster-status:
+	nomad node status
+	@echo ""
+	consul members
+
+# ── Snapshot ──────────────────────────────────────────────────────────────────
+
+snapshot-rootfs:
+	@echo ">>> Building Python rootfs..."
+	@mkdir -p $(SNAPSHOT_DIR)
+	sudo bash tools/snapshot-builder/build-rootfs.sh \
+		--name $(SNAPSHOT_NAME) \
+		--python 3.11 \
+		--size 1024 \
+		--out $(SNAPSHOT_ROOTFS)
+	@echo ">>> Rootfs built: $(SNAPSHOT_ROOTFS)"
+
+snapshot-create:
+	@echo ">>> Creating Firecracker snapshot..."
+	@[ -f $(SNAPSHOT_ROOTFS) ] || \
+		{ echo "ERROR: rootfs not found — run 'make snapshot-rootfs' first"; exit 1; }
+	@[ -f /tmp/snapshots/vmlinux.bin ] || { \
+		echo ">>> Downloading kernel..."; \
+		curl -fsSL \
+			https://s3.amazonaws.com/spec.ccfc.min/img/quickstart_guide/x86_64/kernels/vmlinux.bin \
+			-o /tmp/snapshots/vmlinux.bin; \
+	}
+	@bash tools/snapshot-builder/fc-snapshot.sh \
+		--name $(SNAPSHOT_NAME) \
+		--rootfs $(SNAPSHOT_ROOTFS) \
+		--kernel /tmp/snapshots/vmlinux.bin \
+		--out-dir $(SNAPSHOT_PARENT_DIR)
+	@echo ">>> Snapshot: $(SNAPSHOT_DIR)/"
+
+snapshot-upload:
+	@echo ">>> Uploading snapshot to MinIO..."
+	@[ -f $(SNAPSHOT_DIR)/state ] || \
+		{ echo "ERROR: snapshot not found — run 'make snapshot-create' first"; exit 1; }
+	bash tools/snapshot-builder/upload-minio.sh \
+		--snapshot-dir $(SNAPSHOT_DIR) \
+		--name $(SNAPSHOT_NAME) \
+		--kernel /tmp/snapshots/vmlinux.bin \
+		--rootfs $(SNAPSHOT_ROOTFS) \
+		--endpoint $(MINIO_ENDPOINT)
+	@echo ">>> Upload done."
+	@mc alias set local $(MINIO_ENDPOINT) minioadmin minioadmin --quiet
+	@mc ls local/platform-snapshots/$(SNAPSHOT_NAME)/
+
+snapshot-build: snapshot-rootfs snapshot-create snapshot-upload
+	@echo ">>> Snapshot pipeline selesai: $(SNAPSHOT_NAME)"
+
+# ── Docker images ─────────────────────────────────────────────────────────────
+
+image-build:
+	@echo ">>> Building sandbox-base..."
+	docker build \
+		-f docker/base/Dockerfile \
+		-t sandbox-base:$(VERSION) \
+		-t sandbox-base:latest \
+		.
+	@echo ">>> Building sandbox-fc-agent..."
+	docker build \
+		-f docker/fc-agent/Dockerfile \
+		-t $(REGISTRY)/sandbox-fc-agent:$(VERSION) \
+		-t $(REGISTRY)/sandbox-fc-agent:latest \
+		.
+	@echo ">>> Building sandbox-gui-agent..."
+	docker build \
+		-f docker/gui-agent/Dockerfile \
+		-t $(REGISTRY)/sandbox-gui-agent:$(VERSION) \
+		-t $(REGISTRY)/sandbox-gui-agent:latest \
+		.
+	@echo ">>> Images built:"
+	@docker images | grep sandbox
+
+image-push:
+	@echo ">>> Pushing images to $(REGISTRY)..."
+	docker push $(REGISTRY)/sandbox-fc-agent:$(VERSION)
+	docker push $(REGISTRY)/sandbox-fc-agent:latest
+	docker push $(REGISTRY)/sandbox-gui-agent:$(VERSION)
+	docker push $(REGISTRY)/sandbox-gui-agent:latest
+	@echo ">>> Push selesai."
+
+image-load:
+	@echo ">>> Saving images to tar..."
+	@mkdir -p /tmp/sandbox-images
+	docker save $(REGISTRY)/sandbox-fc-agent:latest \
+		| gzip > /tmp/sandbox-images/fc-agent.tar.gz
+	docker save $(REGISTRY)/sandbox-gui-agent:latest \
+		| gzip > /tmp/sandbox-images/gui-agent.tar.gz
+	@echo ">>> Load ke Nomad node dengan:"
+	@echo "    scp /tmp/sandbox-images/*.tar.gz <node>:/tmp/"
+	@echo "    ssh <node> 'docker load < /tmp/sandbox-images/fc-agent.tar.gz'"
+
+# ── Deploy ────────────────────────────────────────────────────────────────────
+
+deploy:
+	@echo ">>> Deploying sandbox-worker to Nomad..."
+	nomad job run services/controller/nomad/jobs/sandbox-worker.nomad
+	@echo ">>> Menunggu job running..."
+	@sleep 5
+	@$(MAKE) deploy-status
+
+deploy-status:
+	nomad job status sandbox-worker
+
+deploy-logs:
+	@ALLOC=$$(nomad job status sandbox-worker \
+		| grep -E 'running|pending' | head -1 | awk '{print $$1}'); \
+	[ -n "$$ALLOC" ] && nomad alloc logs $$ALLOC || echo "Tidak ada alloc running"
+
+# ── Test ─────────────────────────────────────────────────────────────────────
+
+health:
+	@echo "--- fc-agent health:"
+	@curl -sf http://$(NODE1_IP):8081/health | python3 -m json.tool \
+		|| echo "  fc-agent: DOWN"
+	@echo "--- wasm-agent health:"
+	@curl -sf http://$(NODE1_IP):8082/health | python3 -m json.tool \
+		|| echo "  wasm-agent: DOWN"
+	@echo "--- gui-agent health:"
+	@curl -sf http://$(NODE1_IP):8083/health | python3 -m json.tool \
+		|| echo "  gui-agent: DOWN"
+
+run-python:
+	@echo ">>> POST /execute — python_run: print(1+1)"
+	@curl -sf -X POST http://$(NODE1_IP):8081/execute \
+		-H "Content-Type: application/json" \
+		-d '{"tool":"python_run","input":{"code":"print(1+1)"}}' \
+		| python3 -m json.tool
+
+# ── Worker (sandbox-worker/) ──────────────────────────────────────────────────
+
+worker-install:
+	cd sandbox-worker && uv venv .venv && uv pip install -e ".[dev]"
+
+worker-test:
+	cd sandbox-worker && .venv/bin/pytest tests/unit/ -v
+
+worker-lint:
+	cd sandbox-worker && .venv/bin/ruff check src/ && \
+		.venv/bin/mypy src/ --ignore-missing-imports
+
+# ── Clean ─────────────────────────────────────────────────────────────────────
+
+clean:
+	@echo ">>> Cleaning build artifacts..."
+	find . -type d -name __pycache__ -not -path './.git/*' \
+		-exec rm -rf {} + 2>/dev/null || true
+	find . -type d -name '*.egg-info' -not -path './.git/*' \
+		-exec rm -rf {} + 2>/dev/null || true
+	find . -type d -name .pytest_cache \
+		-exec rm -rf {} + 2>/dev/null || true
+	rm -rf /tmp/sandbox-images
+	@echo ">>> Done."

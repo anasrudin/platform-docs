@@ -7,6 +7,12 @@
 | Scope | Full HTTP API surface exposed by `platform-api` |
 | Last updated | April 8, 2026 |
 
+## Interactive API reference
+
+<swagger-ui src="openapi.yaml"/>
+
+---
+
 ## Executive summary
 
 The platform exposes an HTTP API for session management, tool execution, artifact storage, and package management. This is a local MVP API. Authentication and versioning are not yet implemented.

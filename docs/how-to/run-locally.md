@@ -41,7 +41,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 
 # Install the platform package with dev dependencies
-pip install -e ".[dev]"
+uv pip install -e ".[dev]"
 ```
 
 Verify:
@@ -285,8 +285,8 @@ make clean   # remove __pycache__, *.egg-info, build artifacts
 
 ## Related documents
 
-- [../product/getting-started.md](../product/getting-started.md)
+- [../tutorials/getting-started.md](../tutorials/getting-started.md)
 - [../reference/api-spec.md](../reference/api-spec.md)
 - [./troubleshooting.md](./troubleshooting.md)
 - [./deploy.md](./deploy.md)
-- [../reference/runtime-reference.md](../reference/runtime-reference.md)
+- [../explanation/system-overview.md](../explanation/system-overview.md)

@@ -1,0 +1,14 @@
+# services/docker-compose.yml
+# Root compose — include semua layer
+# Jalankan: docker compose up -d
+# Atau per layer: docker compose -f data/docker-compose.yml up -d
+
+include:
+  - path: data/docker-compose.yml
+  - path: controller/docker-compose.yml
+  - path: monitoring/docker-compose.yml
+
+networks:
+  platform-net:
+    name: platform-net
+    driver: bridge

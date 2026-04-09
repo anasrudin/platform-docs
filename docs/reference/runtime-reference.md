@@ -114,8 +114,8 @@ The delivery view for those milestones is maintained in [../operations/roadmap.m
 
 ## Related documents
 
-- [../overview/platform-overview.md](../overview/platform-overview.md)
-- [../architecture/system-overview.md](../architecture/system-overview.md)
+- [../explanation/platform-overview.md](../explanation/platform-overview.md)
+- [../explanation/system-overview.md](../explanation/system-overview.md)
 - [../operations/roadmap.md](../operations/roadmap.md)
 - [tools-reference.md](./tools-reference.md)
 - [api-spec.md](./api-spec.md)

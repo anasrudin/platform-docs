@@ -1,0 +1,53 @@
+site_name: Platform Docs
+site_description: Sandbox execution platform — tutorials, reference, and architecture docs
+docs_dir: docs
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - content.code.copy
+  palette:
+    - scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+plugins:
+  - search
+  - swagger-ui-tag
+  - minify:
+      minify_html: true
+
+nav:
+  - Home: README.md
+  - Tutorials:
+      - Getting started: tutorials/getting-started.md
+  - How-to guides:
+      - Run locally: how-to/run-locally.md
+      - Deploy to cluster: how-to/deploy.md
+      - Run tests: how-to/run-tests.md
+      - Migrate Go to Python: how-to/migrate-go-to-python.md
+      - Troubleshooting: how-to/troubleshooting.md
+  - Reference:
+      - API spec: reference/api-spec.md
+      - Runtime reference: reference/runtime-reference.md
+      - Tools reference: reference/tools-reference.md
+  - Explanation:
+      - Platform overview: explanation/platform-overview.md
+      - System overview: explanation/system-overview.md
+  - Decisions:
+      - Index: decisions/README.md
+      - "ADR-001 — Go to Python": decisions/001-go-to-python.md
+      - "ADR-002 — Nomad Worker architecture": decisions/002-nomad-worker-architecture.md
+  - Operations:
+      - Roadmap: operations/roadmap.md
+      - Release notes: operations/release-notes.md
+  - Archive:
+      - Legacy Kubernetes reference: archive/legacy-kubernetes-reference.md

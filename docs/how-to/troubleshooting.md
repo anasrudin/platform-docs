@@ -20,14 +20,14 @@
 ```bash
 cd sandbox-platform
 source .venv/bin/activate
-pip install -e ".[dev]"
+uv pip install -e ".[dev]"
 ```
 
 If the error persists after reinstalling, stale `.egg-info` directories may be causing a conflict:
 
 ```bash
 find . -name "*.egg-info" -type d | xargs rm -rf
-pip install -e ".[dev]"
+uv pip install -e ".[dev]"
 ```
 
 ---
@@ -40,7 +40,7 @@ pip install -e ".[dev]"
 
 ---
 
-### `pip install` fails with `ERROR: No matching distribution found`
+### `uv pip install` fails with `ERROR: No matching distribution found`
 
 **Cause:** Python version mismatch (< 3.12) or network issue.
 
@@ -53,7 +53,7 @@ python3 --version    # must be 3.12+
 If version is correct, check network access to PyPI. In a restricted environment, set a proxy:
 
 ```bash
-pip install -e ".[dev]" --proxy http://proxy.corp:3128
+uv pip install -e ".[dev]" --proxy http://proxy.corp:3128
 ```
 
 ---
@@ -262,7 +262,7 @@ openssl rsa -in /etc/sandbox/certs/server.key -check -noout
 
 ```bash
 find . -name "*.egg-info" -type d | xargs rm -rf
-pip install -e ".[dev]"
+uv pip install -e ".[dev]"
 pytest
 ```
 
@@ -284,4 +284,4 @@ pytest --cov=sandbox_platform --cov-report=term-missing
 
 - [run-locally.md](./run-locally.md)
 - [../reference/api-spec.md](../reference/api-spec.md)
-- [../process/release-notes.md](../process/release-notes.md)
+- [../operations/release-notes.md](../operations/release-notes.md)

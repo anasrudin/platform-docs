@@ -27,17 +27,20 @@ dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.24.0",
     "pytest-cov>=5.0.0",
+    "ruff>=0.4.0",
+    "mypy>=1.10.0",
 ]
 
 [project.scripts]
-platform-api = "platform_cmd.platform_api:main"
-fc-agent      = "platform_cmd.fc_agent:main"
-wasm-agent    = "platform_cmd.wasm_agent:main"
-gui-agent     = "platform_cmd.gui_agent:main"
+platform-api = "api.app:main"
+fc-agent      = "agents.fc_agent:main"
+wasm-agent    = "agents.wasm_agent:main"
+gui-agent     = "agents.gui_agent:main"
 
 [tool.setuptools.packages.find]
-where = ["sandbox-platform/src"]
+where = ["sandbox-worker/src", "sandbox-platform/src"]
 
 [tool.pytest.ini_options]
-testpaths = ["sandbox-platform/tests"]
+testpaths = ["sandbox-worker/tests"]
 asyncio_mode = "auto"
+pythonpath = ["sandbox-worker/src", "sandbox-platform/src"]
