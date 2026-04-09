@@ -26,9 +26,9 @@ class RecordingTracer:
         self.records: list[tuple[str, dict, _RecordingSpan]] = []
 
     @contextmanager
-    def start_span(self, name: str, attrs: dict | None = None):
+    def start_span(self, name: str, attributes: dict | None = None):
         span = _RecordingSpan()
-        self.records.append((name, attrs or {}, span))
+        self.records.append((name, attributes or {}, span))
         yield span
 
     @property
