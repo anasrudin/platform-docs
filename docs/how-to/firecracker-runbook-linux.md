@@ -175,3 +175,219 @@ Expected:
 > The `pool_size` value reflects the `FC_POOL_SIZE` environment variable (default: `2`).
 
 Troubleshoot: if MinIO is unreachable, confirm Docker is running and `docker compose ps` from `services/` shows port `9000->9000`.
+
+---
+
+## 4. Build a Firecracker snapshot from scratch
+
+A real Firecracker snapshot captures full VM state: CPU registers, memory, and disk. Restoring from snapshot boots a VM in 20–80ms instead of a full kernel boot.
+
+**4a. Download kernel and rootfs**
+
+```bash
+mkdir -p /tmp/fc-assets
+
+# Firecracker-optimized kernel (x86_64)
+curl -fL -o /tmp/fc-assets/vmlinux \
+  "https://s3.amazonaws.com/spec.ccfc.min/img/quickstart_guide/x86_64/kernels/vmlinux.bin"
+
+# Minimal rootfs (replace with a Python-preinstalled image for production use)
+curl -fL -o /tmp/fc-assets/rootfs.ext4 \
+  "https://s3.amazonaws.com/spec.ccfc.min/img/quickstart_guide/x86_64/rootfs/bionic.rootfs.ext4"
+```
+
+> These are Firecracker's public quickstart assets. For a Python runtime snapshot, use a rootfs with Python 3.12 pre-installed.
+
+**4b. Start Firecracker via API socket**
+
+```bash
+FC_SOCKET=/tmp/fc-$(date +%s).sock
+
+# Start Firecracker in background (no VM yet — API server only)
+firecracker --api-sock $FC_SOCKET &
+FC_PID=$!
+echo "Firecracker PID: $FC_PID, socket: $FC_SOCKET"
+sleep 1
+```
+
+**4c. Configure the VM via Firecracker API**
+
+```bash
+# Set kernel
+curl -s -X PUT \
+  --unix-socket $FC_SOCKET \
+  "http://localhost/boot-source" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"kernel_image_path\": \"/tmp/fc-assets/vmlinux\",
+    \"boot_args\": \"console=ttyS0 reboot=k panic=1 pci=off\"
+  }"
+
+# Set rootfs
+curl -s -X PUT \
+  --unix-socket $FC_SOCKET \
+  "http://localhost/drives/rootfs" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"drive_id\": \"rootfs\",
+    \"path_on_host\": \"/tmp/fc-assets/rootfs.ext4\",
+    \"is_root_device\": true,
+    \"is_read_only\": false
+  }"
+
+# Set machine config
+curl -s -X PUT \
+  --unix-socket $FC_SOCKET \
+  "http://localhost/machine-config" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vcpu_count": 2,
+    "mem_size_mib": 512
+  }'
+```
+
+Each command returns `{}` on success.
+
+**4d. Start the VM**
+
+```bash
+curl -s -X PUT \
+  --unix-socket $FC_SOCKET \
+  "http://localhost/actions" \
+  -H "Content-Type: application/json" \
+  -d '{"action_type": "InstanceStart"}'
+```
+
+Expected: `{}` (HTTP 204). Wait 2 seconds for the kernel to boot.
+
+**4e. Create the snapshot**
+
+```bash
+mkdir -p /tmp/python-v1
+
+curl -s -X PUT \
+  --unix-socket $FC_SOCKET \
+  "http://localhost/snapshot/create" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"snapshot_type\": \"Full\",
+    \"snapshot_path\": \"/tmp/python-v1/vmstate.bin\",
+    \"mem_file_path\": \"/tmp/python-v1/memory.bin\"
+  }"
+```
+
+Expected: `{}` (HTTP 204).
+
+**4f. Write metadata**
+
+```bash
+cat > /tmp/python-v1/meta.json <<'EOF'
+{
+  "name": "python-v1",
+  "version": "3.12",
+  "kernel": "vmlinux-5.10",
+  "rootfs": "python-v1.ext4",
+  "vcpus": 2,
+  "mem_mib": 512,
+  "dry_run": false,
+  "files": {}
+}
+EOF
+```
+
+**4g. Stop Firecracker**
+
+```bash
+kill $FC_PID
+wait $FC_PID 2>/dev/null
+echo "Firecracker stopped"
+```
+
+Verify snapshot files exist and are non-zero:
+
+```bash
+ls -lh /tmp/python-v1/
+```
+
+Expected (sizes vary — `memory.bin` ≈ 512MB, `vmstate.bin` a few MB):
+
+```
+-rw-r--r-- 1 user user 512M memory.bin
+-rw-r--r-- 1 user user 2.1M vmstate.bin
+-rw-r--r-- 1 user user 155B meta.json
+```
+
+Troubleshoot: if `InstanceStart` fails, verify `/dev/kvm` is accessible by your user (`ls -la /dev/kvm`) and your user is in the `kvm` group (`groups`).
+
+---
+
+## 5. Upload snapshot to MinIO and verify load
+
+**5a. Create bucket and upload**
+
+```bash
+mc alias set local http://localhost:9000 minioadmin minioadmin
+mc mb local/platform-snapshots || true
+
+mc cp /tmp/python-v1/vmstate.bin local/platform-snapshots/python-v1/vmstate.bin
+mc cp /tmp/python-v1/memory.bin  local/platform-snapshots/python-v1/memory.bin
+mc cp /tmp/python-v1/meta.json   local/platform-snapshots/python-v1/meta.json
+```
+
+Verify upload:
+
+```bash
+mc ls local/platform-snapshots/python-v1/
+```
+
+Expected (three objects, non-zero sizes):
+
+```
+[...] 512MiB memory.bin
+[...] 2.1MiB vmstate.bin
+[...]   155B meta.json
+```
+
+**5b. Test snapshot load via fc-agent**
+
+> **Known issue:** The `fc-agent` entry point currently fails to start because the `agents` package is not yet present in `src/`. Running `fc-agent` will produce `ModuleNotFoundError: No module named 'agents'`. Section 5 documents the intended workflow for when the package is available.
+
+Clear local cache to force a download:
+
+```bash
+rm -rf /tmp/sandbox-cache
+```
+
+Start fc-agent (in a new terminal, from `sandbox-worker/`):
+
+```bash
+source .venv/bin/activate
+FC_MODE=real \
+  SNAPSHOT_NAME=python-v1 \
+  SNAPSHOT_CACHE_DIR=/tmp/sandbox-cache \
+  MINIO_ENDPOINT=http://localhost:9000 \
+  MINIO_ACCESS_KEY=minioadmin \
+  MINIO_SECRET_KEY=minioadmin \
+  MINIO_BUCKET=platform-snapshots \
+  fc-agent
+```
+
+Expected log on first start:
+
+```
+snapshot not cached, downloading from MinIO  name=python-v1
+```
+
+**5c. Verify local cache**
+
+```bash
+ls /tmp/sandbox-cache/python-v1/
+```
+
+Expected:
+
+```
+memory.bin  meta.json  vmstate.bin
+```
+
+Troubleshoot: if download fails, `SnapshotStore` falls back from `mc mirror` to direct HTTP download from `MINIO_ENDPOINT`. Ensure MinIO is reachable at `http://localhost:9000`.
