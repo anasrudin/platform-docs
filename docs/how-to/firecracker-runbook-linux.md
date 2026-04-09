@@ -172,8 +172,6 @@ Expected:
   }
 }
 ```
-# N depends on FC_POOL_SIZE config (default: 2)
-
 > The `pool_size` value reflects the `FC_POOL_SIZE` environment variable (default: `2`).
 
 Troubleshoot: if MinIO is unreachable, confirm Docker is running and `docker compose ps` from `services/` shows port `9000->9000`.
