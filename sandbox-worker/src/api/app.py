@@ -28,7 +28,7 @@ from adapters.storage.local import PackageStore, LocalStorage
 from api.middleware.auth import TenantAuthMiddleware, auth_config_from_env
 from api.middleware.request_id import RequestIDMiddleware
 from api.middleware.tracing import TracingMiddleware
-from api.routes import artifact, execute, health, hibernation, package, session, streaming, workspace
+from api.routes import artifact, execute, health, hibernation, package, session, streaming, workflow, workspace
 from config.settings import settings
 from orchestrator.hibernation import HibernationOrchestrator
 from orchestrator.lifecycle import VMLifecycleManager
@@ -145,6 +145,15 @@ async def lifespan(app: FastAPI):
         buffer_size=cfg.streaming.buffer_size,
     )
 
+    # Workflow
+    from service.workflow import WorkflowService
+    def _workflow_executor(tool: str, input_data: dict) -> dict:
+        return _state["exec_svc"].execute({"tool": tool, "input": input_data})
+    _state["workflow_svc"] = WorkflowService(
+        executor=_workflow_executor,
+        max_steps=cfg.workflow.max_steps,
+    )
+
     # Consul registration — optional
     if cfg.consul.enabled:
         consul = ConsulClient()
@@ -179,6 +188,7 @@ def create_app() -> FastAPI:
     app.include_router(hibernation.register(_state))
     app.include_router(streaming.register(_state))
     app.include_router(workspace.register(_state))
+    app.include_router(workflow.register(_state))
 
     return app
 
