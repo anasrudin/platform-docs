@@ -267,6 +267,8 @@ Expected: one node with status `ready`.
 
 The debug job at `services/controller/nomad/jobs/debug-python-runtime.nomad` uses `raw_exec` with `command = "/usr/local/bin/fc-agent"`. On macOS the binary lives in your venv, not `/usr/local/bin/`. Create a local override:
 
+> Run from the repo root (`platform-docs/`), not from inside `sandbox-worker/`.
+
 ```bash
 VENV_PATH=$(pwd)/sandbox-worker/.venv
 
@@ -333,7 +335,7 @@ Expected: `Status = running` (or `failed` if fc-agent module issue is not resolv
 View logs:
 
 ```bash
-ALLOC_ID=$(nomad job status sandbox-worker-macos | grep -E "running|failed" | awk '{print $1}' | head -1)
+ALLOC_ID=$(nomad job status sandbox-worker-macos | awk '/^Allocations/,0 { if (NR>1 && ($6=="running" || $6=="failed")) print $1 }' | head -1)
 nomad alloc logs $ALLOC_ID fc-agent
 ```
 
@@ -342,6 +344,8 @@ Troubleshoot: if `raw_exec` driver is disabled, add `plugin "raw_exec" { config 
 ---
 
 ## 7. Run Python code end-to-end
+
+> **Known issue:** `POST /execute` currently fails with HTTP 500 due to a code bug: `ExecutionService.execute()` calls `vm.run(job)` but `FirecrackerVM` only exposes `.execute(tool, input_data)`. The steps below document the intended workflow. To test the API layer without the VM, use `POST /sessions` and `GET /health` which do not invoke the VM pool.
 
 > **Note:** This section uses the `platform-api` directly. The fc-agent Nomad deployment in section 6 is separate — `platform-api` has its own in-process VM lifecycle manager and does not depend on the Nomad-deployed fc-agent to handle API requests.
 
@@ -371,7 +375,7 @@ SESSION=$(curl -s -X POST http://localhost:8080/sessions \
 echo "Session: $SESSION"
 ```
 
-Expected: `Session: sess_<uuid>`
+Expected: `Session: <uuid>` (e.g. `3f7b2c1d-e4f5-...`)
 
 **7c. Execute Python code**
 
@@ -385,15 +389,16 @@ curl -s -X POST http://localhost:8080/execute \
   }" | jq
 ```
 
-Expected response (sim mode returns mock output):
-
+> **Current behavior (before bug fix):** Returns HTTP 500 with `AttributeError: 'FirecrackerVM' object has no attribute 'run'`.
+>
+> **Intended behavior (after bug fix):** Returns JSON with `status: "completed"` and sim-mode output:
 ```json
 {
   "job_id": "...",
   "session_id": "...",
   "status": "completed",
-  "output": "hello from sandbox\n",
-  "error_message": null,
+  "output": "{\n  \"tool\": \"python_run\",\n  ...\n  \"output\": {\"stdout\": \"[sim] print('hello from sandbox')\\n=> hello from Python\", \"exit_code\": 0}\n}",
+  "error_message": "",
   "duration_ms": 5
 }
 ```
@@ -410,9 +415,7 @@ curl -s -X POST http://localhost:8080/execute \
   }" | jq '.output'
 ```
 
-Expected: `"Sum: 499999500000\n"`
-
-> **Note:** In sim mode, output is simulated by the runtime layer — the actual Python code is not executed inside a VM.
+> **Note:** In sim mode, the runtime always returns the `[sim] ... => hello from Python` template regardless of the actual code input. The `sum(range(...))` computation is not evaluated — sim mode does not execute Python code inside a VM.
 
 ---
 
