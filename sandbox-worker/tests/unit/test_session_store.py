@@ -1,4 +1,5 @@
 """Unit tests for sandbox_platform.session.consul_store.SessionStore."""
+
 from __future__ import annotations
 
 import json
@@ -11,6 +12,7 @@ from adapters.cache.consul import SessionStore
 
 
 # ── Mock transport ─────────────────────────────────────────────────────────────
+
 
 class _KVTransport(httpx.AsyncBaseTransport):
     """In-memory Consul KV store transport."""
@@ -44,6 +46,7 @@ def _store() -> tuple[SessionStore, _KVTransport]:
 
 # ── put ────────────────────────────────────────────────────────────────────────
 
+
 class TestPut:
     @pytest.mark.asyncio
     async def test_put_writes_to_consul_kv(self):
@@ -75,6 +78,7 @@ class TestPut:
 
 # ── get ────────────────────────────────────────────────────────────────────────
 
+
 class TestGet:
     @pytest.mark.asyncio
     async def test_get_returns_dict_when_present(self):
@@ -96,7 +100,9 @@ class TestGet:
     @pytest.mark.asyncio
     async def test_get_reads_from_correct_key(self):
         store, transport = _store()
-        transport.store["sandbox/sessions/s-99"] = json.dumps({"tier": "wasm", "agent_id": ""})
+        transport.store["sandbox/sessions/s-99"] = json.dumps(
+            {"tier": "wasm", "agent_id": ""}
+        )
         await store.get("s-99")
         req = transport.requests[0]
         assert "sandbox/sessions/s-99" in req.url.path
@@ -104,18 +110,23 @@ class TestGet:
 
 # ── delete ────────────────────────────────────────────────────────────────────
 
+
 class TestDelete:
     @pytest.mark.asyncio
     async def test_delete_removes_key(self):
         store, transport = _store()
-        transport.store["sandbox/sessions/s-del"] = json.dumps({"tier": "wasm", "agent_id": ""})
+        transport.store["sandbox/sessions/s-del"] = json.dumps(
+            {"tier": "wasm", "agent_id": ""}
+        )
         await store.delete("s-del")
         assert "sandbox/sessions/s-del" not in transport.store
 
     @pytest.mark.asyncio
     async def test_delete_sends_delete_request(self):
         store, transport = _store()
-        transport.store["sandbox/sessions/s-del2"] = json.dumps({"tier": "wasm", "agent_id": ""})
+        transport.store["sandbox/sessions/s-del2"] = json.dumps(
+            {"tier": "wasm", "agent_id": ""}
+        )
         await store.delete("s-del2")
         req = transport.requests[0]
         assert req.method == "DELETE"
@@ -130,6 +141,7 @@ class TestDelete:
     @pytest.mark.asyncio
     async def test_delete_re_raises_non_404_errors(self):
         """A server error (500) during delete should propagate."""
+
         class ErrorTransport(httpx.AsyncBaseTransport):
             async def handle_async_request(self, request):
                 if request.method == "DELETE":
@@ -145,6 +157,7 @@ class TestDelete:
 
 
 # ── round-trip ────────────────────────────────────────────────────────────────
+
 
 class TestRoundTrip:
     @pytest.mark.asyncio

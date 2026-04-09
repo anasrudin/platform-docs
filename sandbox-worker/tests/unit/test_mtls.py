@@ -8,7 +8,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from adapters.security.mtls import (
+from sandbox_platform.security.mtls import (
     CertManager,
     MTLSMiddleware,
     create_mtls_context,
@@ -173,16 +173,16 @@ class TestMTLSMiddlewareEnabled:
 
 class TestTransportCertChecker:
     def test_returns_true_when_no_transport(self):
-        from adapters.security.mtls import _transport_cert_checker
+        from sandbox_platform.security.mtls import _transport_cert_checker
         assert _transport_cert_checker({}) is True
 
     def test_returns_true_when_transport_has_no_get_extra_info(self):
-        from adapters.security.mtls import _transport_cert_checker
+        from sandbox_platform.security.mtls import _transport_cert_checker
         assert _transport_cert_checker({"transport": object()}) is True
 
     def test_returns_true_when_peer_cert_present(self):
         from unittest.mock import MagicMock
-        from adapters.security.mtls import _transport_cert_checker
+        from sandbox_platform.security.mtls import _transport_cert_checker
         transport = MagicMock()
         transport.get_extra_info.return_value = {"subject": []}  # non-None cert
         assert _transport_cert_checker({"transport": transport}) is True
@@ -190,7 +190,7 @@ class TestTransportCertChecker:
 
     def test_returns_false_when_peer_cert_absent(self):
         from unittest.mock import MagicMock
-        from adapters.security.mtls import _transport_cert_checker
+        from sandbox_platform.security.mtls import _transport_cert_checker
         transport = MagicMock()
         transport.get_extra_info.return_value = None  # no cert
         assert _transport_cert_checker({"transport": transport}) is False

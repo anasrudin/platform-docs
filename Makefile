@@ -12,6 +12,7 @@ MINIO_ENDPOINT  ?= http://localhost:9000
 NODE1_IP        ?= localhost
 
 .PHONY: help \
+        obs-up obs-down \
         services-up services-down services-status \
         services-data services-controller services-monitoring \
         setup \
@@ -29,6 +30,10 @@ help:
 	@echo ""
 	@echo "sandbox-platform — available targets"
 	@echo "─────────────────────────────────────────────────────"
+	@echo ""
+	@echo "  Observability:"
+	@echo "    obs-up               Start Loki + Grafana"
+	@echo "    obs-down             Stop Loki + Grafana"
 	@echo ""
 	@echo "  Services (entity data + controller):"
 	@echo "    services-up          Start consul, minio, postgres via docker compose"
@@ -77,6 +82,13 @@ help:
 	@echo ""
 
 # ── Services ──────────────────────────────────────────────────────────────────
+
+obs-up:
+	@echo ">>> Starting observability stack (Loki + Grafana)..."
+	docker compose -f docker/obs/compose.obs.yaml --profile obs up -d
+
+obs-down:
+	docker compose -f docker/obs/compose.obs.yaml --profile obs down
 
 services-data:
 	@echo ">>> Starting data services (postgres, redis, minio)..."

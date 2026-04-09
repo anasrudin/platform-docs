@@ -3,13 +3,15 @@
 Each runtime agent (fc, wasm, gui) starts one of these in a daemon thread so
 that Consul can poll GET /health without touching the queue-polling loop.
 """
+
 from __future__ import annotations
 
 import threading
 from collections.abc import Callable
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
+from sandbox_platform.middleware.trace import TraceIDMiddleware
 
 
 def make_health_app(
@@ -18,9 +20,10 @@ def make_health_app(
 ) -> FastAPI:
     """Build a FastAPI app with a single GET /health endpoint."""
     app = FastAPI()
+    app.add_middleware(TraceIDMiddleware)
 
     @app.get("/health")
-    def health() -> dict:
+    def health(request: Request, response: Response) -> dict:
         return {
             "status": "ok",
             "runtime": runtime_name,
@@ -40,7 +43,9 @@ def start_health_server(
     config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning")
     server = uvicorn.Server(config)
 
-    thread = threading.Thread(target=server.run, daemon=True, name=f"health-{runtime_name}")
+    thread = threading.Thread(
+        target=server.run, daemon=True, name=f"health-{runtime_name}"
+    )
     thread.start()
 
 

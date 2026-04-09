@@ -1,20 +1,14 @@
 """Unit tests for core models (types)."""
 from datetime import datetime, timezone
 
-import pytest
-
 from models.job import (
     ArtifactMeta,
-    ArtifactUploadResponse,
-    ExecuteRequest,
-    ExecuteResponse,
     Job,
     JobStatus,
     RuntimeResult,
 )
 from models.session import (
     CreateSessionRequest,
-    CreateSessionResponse,
     HealthResponse,
     Session,
     Tier,
@@ -56,6 +50,8 @@ def test_job_defaults():
     assert j.output == ""
     assert j.error_message == ""
     assert j.duration_ms == 0
+    assert j.snapshot_paths is None
+    assert j.trace_id == ""
 
 
 def test_runtime_result_defaults():

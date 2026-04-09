@@ -1,10 +1,9 @@
 """Unit tests for sandbox_platform.runtime.wasm.runtime."""
-import json
-import os
-from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
 
-import pytest
+import json
+from datetime import datetime, timezone
+from unittest.mock import patch
+
 
 from runtime.wasm import Runtime, detect_mode
 from models.job import Job, JobStatus
@@ -14,9 +13,14 @@ from models.session import Tier
 def _make_job(tool: str, input_data: dict = None) -> Job:
     now = datetime.now(timezone.utc)
     return Job(
-        id="j1", session_id="s1", tool=tool,
-        tier=Tier.WASM, input=input_data or {},
-        status=JobStatus.PENDING, created_at=now, updated_at=now,
+        id="j1",
+        session_id="s1",
+        tool=tool,
+        tier=Tier.WASM,
+        input=input_data or {},
+        status=JobStatus.PENDING,
+        created_at=now,
+        updated_at=now,
     )
 
 
@@ -132,7 +136,9 @@ class TestWasmRuntime:
 class TestWasmRealExec:
     """Mirrors TestRealExec_FallsBackToSimOnMissingModule from runtime_test.go."""
 
-    def test_real_exec_falls_back_to_sim_when_module_missing(self, monkeypatch, tmp_path):
+    def test_real_exec_falls_back_to_sim_when_module_missing(
+        self, monkeypatch, tmp_path
+    ):
         """realExec falls back to simExec when module download fails (unreachable MinIO)."""
         monkeypatch.setenv("WASM_MODE", "real")
         monkeypatch.setenv("WASM_CACHE_DIR", str(tmp_path))  # empty cache

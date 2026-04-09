@@ -1,10 +1,10 @@
 """Unit tests for sandbox_platform.packages.store.PackageStore."""
+
 from __future__ import annotations
 
 import json
-import subprocess
 from pathlib import Path
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -18,6 +18,7 @@ def store(tmp_path) -> PackageStore:
 
 
 # ── install (sim / local-dir mode) ────────────────────────────────────────────
+
 
 class TestInstallLocalDir:
     def test_returns_dict_with_name_and_version(self, store):
@@ -57,6 +58,7 @@ class TestInstallLocalDir:
 
 # ── list_packages ──────────────────────────────────────────────────────────────
 
+
 class TestListPackages:
     def test_empty_when_nothing_installed(self, store):
         assert store.list_packages() == []
@@ -88,6 +90,7 @@ class TestListPackages:
 
 # ── delete ────────────────────────────────────────────────────────────────────
 
+
 class TestDelete:
     def test_delete_removes_package(self, store, tmp_path):
         store.install("numpy", version="1.26.0")
@@ -116,6 +119,7 @@ class TestDelete:
 
 # ── pip subprocess (real mode) ────────────────────────────────────────────────
 
+
 class TestMinIOPaths:
     """Cover _list_minio, _delete_minio (stub warnings), and _store_wheel error."""
 
@@ -140,8 +144,10 @@ class TestMinIOPaths:
         fake_wheel = tmp_path / "pkg-1.0-py3-none-any.whl"
         fake_wheel.write_bytes(b"PK")
         mc_path = "/usr/bin/mc"
-        with patch("shutil.which", return_value=mc_path), \
-             patch("subprocess.run", return_value=MagicMock(returncode=0)) as mock_run:
+        with (
+            patch("shutil.which", return_value=mc_path),
+            patch("subprocess.run", return_value=MagicMock(returncode=0)) as mock_run,
+        ):
             result = store._store_wheel("pkg", "1.0", fake_wheel)
         assert result == "pkg/1.0/wheel.whl"
         # alias set, cp, alias remove = 3 calls
@@ -190,9 +196,11 @@ class TestPipSubprocess:
                 (Path(dest) / "numpy-1.26.0-py3-none-any.whl").write_bytes(b"PK")
             return MagicMock(returncode=0)
 
-        with patch("subprocess.run", side_effect=fake_run) as mock_run, \
-             patch.object(store, "_store_wheel", return_value="numpy/1.26.0/wheel.whl"):
-            result = store.install("numpy", version="1.26.0")
+        with (
+            patch("subprocess.run", side_effect=fake_run) as mock_run,
+            patch.object(store, "_store_wheel", return_value="numpy/1.26.0/wheel.whl"),
+        ):
+            store.install("numpy", version="1.26.0")
 
         mock_run.assert_called_once()
         cmd = mock_run.call_args[0][0]
@@ -214,8 +222,10 @@ class TestPipSubprocess:
                 (Path(dest) / "numpy-1.26.0-py3-none-any.whl").write_bytes(b"PK")
             return MagicMock(returncode=0)
 
-        with patch("subprocess.run", side_effect=fake_run) as mock_run, \
-             patch.object(store, "_store_wheel", return_value="numpy/1.26.0/wheel.whl"):
+        with (
+            patch("subprocess.run", side_effect=fake_run) as mock_run,
+            patch.object(store, "_store_wheel", return_value="numpy/1.26.0/wheel.whl"),
+        ):
             store.install("numpy", version="1.26.0", proxy_url="http://proxy:8080")
 
         cmd = mock_run.call_args[0][0]
@@ -253,8 +263,10 @@ class TestPipSubprocess:
                 (Path(dest) / "scipy-1.12.0-py3-none-any.whl").write_bytes(b"PK")
             return MagicMock(returncode=0)
 
-        with patch("subprocess.run", side_effect=fake_run) as mock_run, \
-             patch.object(store, "_store_wheel", return_value="scipy/1.12.0/wheel.whl"):
+        with (
+            patch("subprocess.run", side_effect=fake_run) as mock_run,
+            patch.object(store, "_store_wheel", return_value="scipy/1.12.0/wheel.whl"),
+        ):
             store.install("scipy", version="1.12.0", extra_dependencies=["numpy>=1.25"])
 
         cmd = mock_run.call_args[0][0]

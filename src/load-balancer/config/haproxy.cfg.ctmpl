@@ -1,0 +1,70 @@
+{{/*
+  haproxy.cfg.ctmpl — Go template rendered by consul-template.
+  consul-template watches the Consul catalog and re-renders this file
+  whenever the fc-agent, wasm-agent, or gui-agent service instances change,
+  then reloads HAProxy with `haproxy -sf $(cat /var/run/haproxy.pid)`.
+*/}}
+global
+    maxconn 4096
+    log stdout format raw local0 info
+    stats socket /var/run/haproxy/admin.sock mode 660 level admin expose-fd listeners
+
+defaults
+    mode http
+    log global
+    option httplog
+    option dontlognull
+    option forwardfor
+    option http-server-close
+    timeout connect 5s
+    timeout client  30s
+    timeout server  30s
+    retries 3
+
+frontend stats
+    bind *:8404
+    stats enable
+    stats uri /stats
+    stats refresh 10s
+
+frontend sandbox_api
+    bind *:80
+    default_backend sandbox_wasm
+
+    acl is_microvm hdr(X-Runtime) -i microvm
+    acl is_gui     hdr(X-Runtime) -i gui
+    use_backend sandbox_microvm if is_microvm
+    use_backend sandbox_gui     if is_gui
+
+backend sandbox_wasm
+    balance leastconn
+    option httpchk GET /health
+    http-check expect status 200
+    default-server inter 10s fall 3 rise 2 slowstart 30s
+{{ range service "wasm-agent" }}
+    server {{ .ID }} {{ .Address }}:{{ .Port }} check
+{{ else }}
+    # No wasm-agent instances in Consul
+{{ end }}
+
+backend sandbox_microvm
+    balance leastconn
+    option httpchk GET /health
+    http-check expect status 200
+    default-server inter 10s fall 3 rise 2 slowstart 60s
+{{ range service "fc-agent" }}
+    server {{ .ID }} {{ .Address }}:{{ .Port }} check
+{{ else }}
+    # No fc-agent instances in Consul
+{{ end }}
+
+backend sandbox_gui
+    balance leastconn
+    option httpchk GET /health
+    http-check expect status 200
+    default-server inter 10s fall 3 rise 2 slowstart 30s
+{{ range service "gui-agent" }}
+    server {{ .ID }} {{ .Address }}:{{ .Port }} check
+{{ else }}
+    # No gui-agent instances in Consul
+{{ end }}

@@ -13,6 +13,7 @@ import subprocess
 import sys
 import tempfile
 
+
 def main():
     raw = os.environ.get("TOOL_INPUT", "{}")
     try:

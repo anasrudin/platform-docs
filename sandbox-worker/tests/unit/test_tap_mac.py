@@ -1,9 +1,9 @@
 """Unit tests for TAP device naming and deterministic MAC generation."""
+
 from __future__ import annotations
 
 import re
 
-import pytest
 
 from runtime.firecracker import make_mac_address, make_tap_name
 
@@ -92,6 +92,7 @@ class TestMakeMacAddress:
     def test_known_value_node_and_vm_bytes(self):
         """Verify byte mapping: sha256(node)[0:2] and sha256(vm)[0:2]."""
         import hashlib
+
         node_id = "n1"
         vm_id = "v1"
         nh = hashlib.sha256(node_id.encode()).digest()

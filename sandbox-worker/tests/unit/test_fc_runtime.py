@@ -1,10 +1,9 @@
 """Unit tests for sandbox_platform.runtime.firecracker.runtime."""
+
 import json
-import os
 from datetime import datetime, timezone
 from unittest.mock import patch
 
-import pytest
 
 from runtime.firecracker import Config, Runtime, detect_mode
 from models.job import Job, JobStatus
@@ -14,9 +13,14 @@ from models.session import Tier
 def _make_job(tool: str, input_data: dict = None) -> Job:
     now = datetime.now(timezone.utc)
     return Job(
-        id="j-fc-1", session_id="s1", tool=tool,
-        tier=Tier.MICROVM, input=input_data or {},
-        status=JobStatus.PENDING, created_at=now, updated_at=now,
+        id="j-fc-1",
+        session_id="s1",
+        tool=tool,
+        tier=Tier.MICROVM,
+        input=input_data or {},
+        status=JobStatus.PENDING,
+        created_at=now,
+        updated_at=now,
     )
 
 
@@ -44,9 +48,17 @@ class TestConfig:
     """Mirrors TestConfigFromEnv_Defaults / TestConfigFromEnv_Overrides in runtime_test.go."""
 
     def test_defaults(self, monkeypatch):
-        for key in ("FC_BIN", "SNAPSHOT_NAME", "SNAPSHOT_CACHE_DIR",
-                    "MINIO_ENDPOINT", "MINIO_ACCESS_KEY", "MINIO_SECRET_KEY",
-                    "MINIO_BUCKET", "FC_POOL_SIZE", "FC_DEV_MODE"):
+        for key in (
+            "FC_BIN",
+            "SNAPSHOT_NAME",
+            "SNAPSHOT_CACHE_DIR",
+            "MINIO_ENDPOINT",
+            "MINIO_ACCESS_KEY",
+            "MINIO_SECRET_KEY",
+            "MINIO_BUCKET",
+            "FC_POOL_SIZE",
+            "FC_DEV_MODE",
+        ):
             monkeypatch.delenv(key, raising=False)
         cfg = Config()
         assert cfg.firecracker_bin == "/usr/bin/firecracker"

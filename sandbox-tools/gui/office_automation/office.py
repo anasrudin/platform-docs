@@ -40,9 +40,13 @@ def _convert(inp: dict):
     fmt = inp.get("output_format", "pdf")
 
     cmd = [
-        LIBREOFFICE, "--headless", "--norestore",
-        f"--convert-to", fmt,
-        "--outdir", WORK_DIR,
+        LIBREOFFICE,
+        "--headless",
+        "--norestore",
+        "--convert-to",
+        fmt,
+        "--outdir",
+        WORK_DIR,
         src,
     ]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)

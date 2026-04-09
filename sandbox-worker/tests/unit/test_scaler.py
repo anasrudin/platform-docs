@@ -2,11 +2,13 @@
 from __future__ import annotations
 
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from scaler import AggregateMetrics, NodeMetrics, aggregate, ScaleAction, ScalingPolicy, Scaler
+from sandbox_platform.scaler.metrics import AggregateMetrics, NodeMetrics, aggregate
+from sandbox_platform.scaler.policy import ScalingPolicy
+from sandbox_platform.scaler.scaler import Scaler
 
 
 def _metrics_for(utilization: float, node_count: int = 2) -> AggregateMetrics:

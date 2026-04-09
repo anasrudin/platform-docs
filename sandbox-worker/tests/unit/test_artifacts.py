@@ -1,8 +1,6 @@
 """Unit tests for sandbox_platform.artifacts.store."""
+
 import io
-import os
-import tempfile
-from pathlib import Path
 
 import pytest
 
@@ -17,8 +15,13 @@ from adapters.storage.s3_compat import (
 
 class TestConfig:
     def test_from_env_defaults(self, monkeypatch):
-        for key in ("MINIO_ENDPOINT", "MINIO_ACCESS_KEY", "MINIO_SECRET_KEY",
-                    "MINIO_ARTIFACTS_BUCKET", "ARTIFACTS_LOCAL_DIR"):
+        for key in (
+            "MINIO_ENDPOINT",
+            "MINIO_ACCESS_KEY",
+            "MINIO_SECRET_KEY",
+            "MINIO_ARTIFACTS_BUCKET",
+            "ARTIFACTS_LOCAL_DIR",
+        ):
             monkeypatch.delenv(key, raising=False)
         cfg = Config.from_env()
         assert cfg.endpoint == "http://localhost:9000"
@@ -110,18 +113,21 @@ class TestNoMCErrors:
     """Mirrors the 'without mc' tests in store_test.go."""
 
     def _no_mc_store(self) -> Store:
-        return Store(Config(
-            endpoint="http://127.0.0.1:1",
-            access_key="test",
-            secret_key="test",
-            bucket="test-bucket",
-        ))
+        return Store(
+            Config(
+                endpoint="http://127.0.0.1:1",
+                access_key="test",
+                secret_key="test",
+                bucket="test-bucket",
+            )
+        )
 
     def test_upload_fails_gracefully_without_mc(self):
         """Mirrors TestUpload_FailsGracefullyWithoutMC."""
         if mc_available():
             pytest.skip("mc is installed — test is for environments without mc")
         import io
+
         store = self._no_mc_store()
         with pytest.raises(Exception) as exc_info:
             store.upload("test-id", "test.txt", io.BytesIO(b"hello"))
@@ -132,6 +138,7 @@ class TestNoMCErrors:
         if mc_available():
             pytest.skip("mc is installed — test is for environments without mc")
         import io
+
         store = self._no_mc_store()
         with pytest.raises(Exception):
             store.download("nonexistent/file.txt", io.BytesIO())

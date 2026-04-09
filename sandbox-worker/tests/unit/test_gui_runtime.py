@@ -1,8 +1,8 @@
 """Unit tests for sandbox_platform.runtime.gui.runtime."""
+
 import json
 from datetime import datetime, timezone
 
-import pytest
 
 from runtime.gui import Runtime
 from models.job import Job, JobStatus

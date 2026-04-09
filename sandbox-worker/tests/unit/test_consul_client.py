@@ -2,6 +2,7 @@
 
 Tests use httpx mock transport so no real Consul instance is needed.
 """
+
 from __future__ import annotations
 
 import json
@@ -42,6 +43,7 @@ def _consul(transport: _MockTransport) -> ConsulClient:
 
 
 # ── register_service ──────────────────────────────────────────────────────────
+
 
 class TestRegisterService:
     @pytest.mark.asyncio
@@ -87,13 +89,17 @@ class TestRegisterService:
 
     @pytest.mark.asyncio
     async def test_register_raises_on_non_200(self):
-        transport = _MockTransport({("PUT", "/v1/agent/service/register"): httpx.Response(500)})
+        transport = _MockTransport(
+            {("PUT", "/v1/agent/service/register"): httpx.Response(500)}
+        )
         c = _consul(transport)
 
         with pytest.raises(RuntimeError, match="register"):
             await c.register_service(
-                name="x", service_id="x-1",
-                address="127.0.0.1", port=9000,
+                name="x",
+                service_id="x-1",
+                address="127.0.0.1",
+                port=9000,
                 health_url="http://127.0.0.1:9000/health",
                 tags=[],
             )
@@ -101,12 +107,15 @@ class TestRegisterService:
 
 # ── deregister_service ────────────────────────────────────────────────────────
 
+
 class TestDeregisterService:
     @pytest.mark.asyncio
     async def test_sends_put_to_deregister(self):
-        transport = _MockTransport({
-            ("PUT", "/v1/agent/service/deregister"): _ok(),
-        })
+        transport = _MockTransport(
+            {
+                ("PUT", "/v1/agent/service/deregister"): _ok(),
+            }
+        )
         c = _consul(transport)
 
         await c.deregister_service("fc-agent-1")
@@ -117,9 +126,11 @@ class TestDeregisterService:
 
     @pytest.mark.asyncio
     async def test_deregister_raises_on_non_200(self):
-        transport = _MockTransport({
-            ("PUT", "/v1/agent/service/deregister"): httpx.Response(500),
-        })
+        transport = _MockTransport(
+            {
+                ("PUT", "/v1/agent/service/deregister"): httpx.Response(500),
+            }
+        )
         c = _consul(transport)
 
         with pytest.raises(RuntimeError, match="deregister"):
@@ -127,6 +138,7 @@ class TestDeregisterService:
 
 
 # ── KV operations ─────────────────────────────────────────────────────────────
+
 
 class TestKVOperations:
     @pytest.mark.asyncio
@@ -173,11 +185,12 @@ class TestKVOperations:
     @pytest.mark.asyncio
     async def test_kv_round_trip(self):
         """Write → Read → Delete session KV."""
-        responses: dict[tuple[str, str], httpx.Response] = {}
         store: dict[str, str] = {}
 
         class RoundTripTransport(httpx.AsyncBaseTransport):
-            async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+            async def handle_async_request(
+                self, request: httpx.Request
+            ) -> httpx.Response:
                 key = request.url.path.removeprefix("/v1/kv/")
                 if request.method == "PUT":
                     store[key] = request.content.decode()
@@ -219,6 +232,7 @@ class TestKVOperations:
 
 
 # ── Token header ──────────────────────────────────────────────────────────────
+
 
 class TestTokenHeader:
     @pytest.mark.asyncio

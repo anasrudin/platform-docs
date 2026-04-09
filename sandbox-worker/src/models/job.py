@@ -30,6 +30,7 @@ class Job:
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)
     snapshot_paths: Any = None
+    trace_id: str = ""
 
 
 @dataclass

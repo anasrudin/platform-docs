@@ -4,7 +4,7 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from scaler import AggregateMetrics, MetricsCollector, NodeMetrics, aggregate
+from sandbox_platform.scaler.metrics import MetricsCollector, NodeMetrics, aggregate
 
 
 # ── aggregate() ───────────────────────────────────────────────────────────────

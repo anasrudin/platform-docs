@@ -1,9 +1,9 @@
 """Unit tests for sandbox_platform.scaler.policy — pure functions, no I/O."""
+
 from __future__ import annotations
 
 import time
 
-import pytest
 
 from scaler import AggregateMetrics, ScaleAction, ScalingPolicy, evaluate
 
