@@ -8,7 +8,7 @@ def register(app_state: dict) -> APIRouter:
     router = APIRouter()
 
     @router.delete("/snapshots/{session_id}", status_code=204)
-    def delete_snapshot(session_id: str) -> Response:
+    async def delete_snapshot(session_id: str) -> Response:
         downloader = app_state.get("snapshot_downloader")
         if downloader is None:
             raise HTTPException(status_code=503, detail="Snapshot service not configured")
