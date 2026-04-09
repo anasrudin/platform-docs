@@ -217,6 +217,9 @@ class APIConfig:
     host: str = field(default_factory=lambda: _env("API_HOST", "0.0.0.0"))
     port: int = field(default_factory=lambda: _env_int("API_PORT", 8080))
     workers: int = field(default_factory=lambda: _env_int("API_WORKERS", 1))
+    dev_mode: bool = field(default_factory=lambda: _env_bool("DEV_MODE"))
+    node_id: str = field(default_factory=lambda: _env("NODE_ID", "") or __import__("socket").gethostname())
+    health_port: int = field(default_factory=lambda: _env_int("API_HEALTH_PORT", 8081))
 
 
 # ── Root settings object ───────────────────────────────────────────────────────
