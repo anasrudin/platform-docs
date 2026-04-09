@@ -1,0 +1,40 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p sandbox_platform/queue sandbox_platform/session sandbox_platform/router sandbox_platform/artifacts sandbox_platform/runtime/firecracker sandbox_platform/runtime/wasm sandbox_platform/runtime/gui cmd tests/unit tests/integration)",
+      "Bash(touch sandbox_platform/__init__.py sandbox_platform/queue/__init__.py sandbox_platform/session/__init__.py sandbox_platform/router/__init__.py sandbox_platform/artifacts/__init__.py sandbox_platform/runtime/__init__.py sandbox_platform/runtime/firecracker/__init__.py sandbox_platform/runtime/wasm/__init__.py sandbox_platform/runtime/gui/__init__.py cmd/__init__.py tests/__init__.py tests/unit/__init__.py tests/integration/__init__.py)",
+      "Bash(python3 -m venv .venv)",
+      "Bash(.venv/bin/pip install:*)",
+      "Bash(.venv/bin/pip list:*)",
+      "Bash(.venv/bin/pytest tests/unit/ -v)",
+      "Bash(sed -i '' 's/from datetime import datetime/from datetime import datetime, timezone/' tests/unit/test_types.py tests/unit/test_queue.py tests/unit/test_router.py tests/unit/test_wasm_runtime.py tests/unit/test_fc_runtime.py tests/unit/test_gui_runtime.py)",
+      "Bash(sed -i '' 's/datetime.utcnow\\(\\)/datetime.now\\(timezone.utc\\)/' tests/unit/test_types.py tests/unit/test_queue.py tests/unit/test_router.py tests/unit/test_wasm_runtime.py tests/unit/test_fc_runtime.py tests/unit/test_gui_runtime.py)",
+      "Bash(.venv/bin/pytest tests/unit/ -v --tb=short)",
+      "Bash(.venv/bin/python -c ':*)",
+      "Bash(grep -hE \"^func |^type \" pkg/types/types.go internal/queue/*.go internal/session/manager.go internal/router/*.go internal/artifacts/store.go runtime/firecracker/*.go runtime/wasm/*.go runtime/gui/runtime.go)",
+      "Bash(grep -hE \"^def |^class |^    def \" sandbox_platform/types.py sandbox_platform/queue/client.py sandbox_platform/session/manager.py sandbox_platform/router/*.py sandbox_platform/artifacts/store.py sandbox_platform/runtime/firecracker/*.py sandbox_platform/runtime/wasm/*.py sandbox_platform/runtime/gui/runtime.py)",
+      "Bash(ls -la *.go *.mod *.sum Makefile)",
+      "Bash(ls -la *.toml *.cfg *.ini)",
+      "Bash(ls -la docker-compose* .env*)",
+      "Bash(.venv/bin/pip show:*)",
+      "Bash(echo \"  github.com/lib/pq           → psycopg2-binary $\\(.venv/bin/pip show psycopg2-binary)",
+      "Bash(.venv/bin/python -m pip show sandbox-platform)",
+      "Bash(.venv/bin/platform-api --help)",
+      "Bash(.venv/bin/python -c \"import cmd; print\\(cmd.__file__\\)\")",
+      "Bash(.venv/bin/python -c \"import sys; [print\\(p\\) for p in sys.path]\")",
+      "Bash(.venv/bin/python -c \"from cmd.platform_api import main; print\\('import OK'\\)\")",
+      "Bash(timeout 5 .venv/bin/platform-api)",
+      "Bash(timeout 3 .venv/bin/fc-agent)",
+      "Bash(head -5 scripts/*.sh)",
+      "Bash(mkdir src:*)",
+      "Bash(mv sandbox_platform src/)",
+      "Bash(mv platform_cmd src/)",
+      "Bash(.venv/bin/pytest tests/unit/ -q)",
+      "Bash(.venv/bin/python -c \"from platform_cmd.platform_api import main; print\\('entry point OK'\\)\")",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(git push:*)"
+    ]
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "name": "sandbox-platform-lb",
+  "description": "HAProxy load balancer for sandbox platform runtime agents",
+  "version": "1.0.0",
+
+  "configs": {
+    "baremetal": {
+      "file": "baremetal/haproxy.cfg",
+      "description": "Static config — fixed IPs, no service discovery. For local dev and single-node baremetal.",
+      "requires": [],
+      "reload_cmd": "haproxy -f /etc/haproxy/haproxy.cfg -sf $(cat /var/run/haproxy.pid)"
+    },
+    "server": {
+      "file": "server/haproxy.cfg.ctmpl",
+      "description": "Dynamic config via consul-template. Backends auto-discovered from Consul. For multi-node baremetal or self-managed server.",
+      "requires": ["consul", "consul-template"],
+      "reload_cmd": "haproxy -f /etc/haproxy/haproxy.cfg -sf $(cat /var/run/haproxy.pid)"
+    }
+  },
+
+  "ports": {
+    "frontend":  80,
+    "frontend_tls": 443,
+    "stats":     8404,
+    "admin_sock": "/var/run/haproxy/admin.sock"
+  },
+
+  "backends": [
+    {
+      "name":    "sandbox_wasm",
+      "service": "wasm-agent",
+      "tier":    "wasm",
+      "balance": "leastconn",
+      "health_path": "/health",
+      "health_interval": "10s",
+      "fall": 3,
+      "rise": 2,
+      "slowstart": "30s",
+      "timeout_server": "30s",
+      "default_ports": {
+        "baremetal": [8082]
+      }
+    },
+    {
+      "name":    "sandbox_microvm",
+      "service": "fc-agent",
+      "tier":    "microvm",
+      "balance": "leastconn",
+      "health_path": "/health",
+      "health_interval": "10s",
+      "fall": 3,
+      "rise": 2,
+      "slowstart": "60s",
+      "timeout_server": "60s",
+      "default_ports": {
+        "baremetal": [8081]
+      },
+      "notes": "slowstart 60s karena FC VM butuh warm-up. 503 dari /health = node overloaded, HAProxy auto-exclude."
+    },
+    {
+      "name":    "sandbox_gui",
+      "service": "gui-agent",
+      "tier":    "gui",
+      "balance": "leastconn",
+      "health_path": "/health",
+      "health_interval": "10s",
+      "fall": 3,
+      "rise": 2,
+      "slowstart": "30s",
+      "timeout_server": "120s",
+      "default_ports": {
+        "baremetal": [8083]
+      }
+    }
+  ],
+
+  "routing": {
+    "strategy": "header",
+    "header": "X-Runtime",
+    "values": {
+      "wasm":    "sandbox_wasm",
+      "microvm": "sandbox_microvm",
+      "gui":     "sandbox_gui"
+    },
+    "default_backend": "sandbox_wasm"
+  },
+
+  "swap_for_cloud": {
+    "aws":  "adapters/loadbalancer/aws_alb.py — ALB target groups per tier, health check via /health",
+    "gcp":  "adapters/loadbalancer/gcp_lb.py  — GCP Backend Services per tier",
+    "note": "Cloud LB tidak perlu file config ini. Adapter langsung call cloud API untuk register/deregister backend."
+  }
+}

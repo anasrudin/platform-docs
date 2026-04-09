@@ -3,9 +3,9 @@
 # snapshot-builder.sh — Build a Firecracker VM snapshot and upload to MinIO
 #
 # This is the main orchestrator.  It calls:
-#   1. build-rootfs.sh   — creates a Python ext4 rootfs via Docker
-#   2. build-snapshot.sh — boots the VM and captures a snapshot (Linux + KVM)
-#   3. upload-minio.sh   — uploads artifacts to MinIO platform-snapshots bucket
+#   1. build-rootfs.sh  — creates a Python ext4 rootfs via Docker
+#   2. fc-snapshot.sh   — boots the VM and captures a snapshot (Linux + KVM)
+#   3. upload-minio.sh  — uploads artifacts to MinIO platform-snapshots bucket
 #
 # Usage:
 #   ./snapshot-builder.sh [--config FILE] [OPTIONS]
@@ -156,7 +156,7 @@ else
   [[ ! -f "$ROOTFS_PATH" ]] && { echo "ERROR: rootfs not found: $ROOTFS_PATH" >&2; exit 1; }
 
   echo "[snapshot] Building Firecracker snapshot..."
-  run "$SCRIPT_DIR/../../scripts/build-snapshot.sh" \
+  run "$SCRIPT_DIR/fc-snapshot.sh" \
     --kernel "$KERNEL_PATH" \
     --rootfs "$ROOTFS_PATH" \
     --name   "$SNAPSHOT_NAME" \
@@ -188,4 +188,4 @@ echo "  Local dir:  $SNAP_DIR"
 echo "  meta.json:  $(cat "$SNAP_DIR/meta.json" 2>/dev/null | head -5 || echo '(see file)')"
 echo ""
 echo "To load this snapshot in the runtime:"
-echo "  SNAPSHOT_NAME=$SNAPSHOT_NAME ./sandbox-platform/bin/fc-agent"
+echo "  SNAPSHOT_NAME=$SNAPSHOT_NAME fc-agent"
