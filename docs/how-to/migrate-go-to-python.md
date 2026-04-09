@@ -28,7 +28,7 @@ Semua perintah dijalankan dari direktori `sandbox-platform/`.
 | `github.com/redis/go-redis/v9` | `redis` | |
 | `net/http` | `fastapi` + `uvicorn` | |
 | `log/slog` (JSON) | `structlog` | |
-| `go build` | `pip install -e .` | |
+| `go build` | `uv pip install -e .` | |
 | `go test ./...` | `pytest` | |
 
 ---
@@ -131,7 +131,7 @@ EOF
 ## Langkah 4 — Install Dependensi
 
 ```bash
-pip install -e ".[dev]"
+uv pip install -e ".[dev]"
 
 # Verifikasi semua package terinstall
 pip list | grep -E "fastapi|redis|psycopg2|minio|structlog|pydantic|uvicorn"
@@ -1068,7 +1068,7 @@ cat > Makefile.python << 'EOF'
 .PHONY: install dev test lint clean
 
 install:
-	pip install -e ".[dev]"
+	uv pip install -e ".[dev]"
 
 dev:
 	REDIS_URL=redis://localhost:6379/0 \
@@ -1161,7 +1161,7 @@ curl -s -X POST http://localhost:8080/execute \
 | JSON decode | `json.Unmarshal(b, &v)` | `json.loads(b)` |
 | Env var | `os.Getenv("KEY")` | `os.environ.get("KEY")` |
 | HTTP server | `http.ListenAndServe` | `uvicorn.run(app)` |
-| Build | `go build ./...` | `pip install -e .` |
+| Build | `go build ./...` | `uv pip install -e .` |
 | Run binary | `./platform-api` | `platform-api` (setelah install) |
 | Test | `go test ./...` | `pytest` |
 | Log JSON | `slog.Info(...)` | `structlog.get_logger().info(...)` |

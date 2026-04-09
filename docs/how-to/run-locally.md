@@ -41,7 +41,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 
 # Install the platform package with dev dependencies
-pip install -e ".[dev]"
+uv pip install -e ".[dev]"
 ```
 
 Verify:

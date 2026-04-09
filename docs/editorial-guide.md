@@ -51,7 +51,7 @@ Put all commands, file paths, and values in code formatting.
 - Multi-line or runnable: use a fenced code block with a language tag
 
 ```bash
-pip install -r requirements-docs.txt
+uv pip install -r requirements-docs.txt
 mkdocs serve
 ```
 

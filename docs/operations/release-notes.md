@@ -19,7 +19,7 @@ Full Python migration complete. Five advanced feature phases shipped. All 235 te
 
 - **Runtime language**: The platform codebase migrated from Go 1.25 to Python 3.12+. All Go binaries have been removed.
 - **Entry point names**: The `cmd/` package was renamed to `platform_cmd/` to avoid conflict with the Python standard library `cmd` module. Entry point commands remain the same (`platform-api`, `fc-agent`, `wasm-agent`, `gui-agent`).
-- **Install method**: `go build` is replaced by `pip install -e ".[dev]"`. See [../how-to/run-locally.md](../how-to/run-locally.md).
+- **Install method**: `go build` is replaced by `uv pip install -e ".[dev]"`. See [../how-to/run-locally.md](../how-to/run-locally.md).
 - **Artifact download path**: `GET /artifacts/{key}` (flat key) is replaced by `GET /artifacts/{artifact_id}/{name}`.
 
 ### New features

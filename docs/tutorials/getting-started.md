@@ -55,7 +55,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 
 # Install the package and dev dependencies
-pip install -e ".[dev]"
+uv pip install -e ".[dev]"
 ```
 
 Verify the install:
