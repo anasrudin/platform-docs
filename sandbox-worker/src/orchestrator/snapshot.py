@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -15,6 +16,7 @@ from pathlib import Path
 import structlog
 
 from adapters.storage.base import BlobStore
+from adapters.tracing import get_tracer
 
 log = structlog.get_logger()
 
@@ -51,28 +53,36 @@ class SnapshotDownloader:
 
     def ensure(self, name: str) -> SnapshotPaths:
         """Return local paths for the named snapshot, downloading if needed."""
-        local_dir = os.path.join(self._cache_dir, name)
-        paths = SnapshotPaths(
-            state_file=os.path.join(local_dir, "vmstate.bin"),
-            mem_file=os.path.join(local_dir, "memory.bin"),
-            meta_file=os.path.join(local_dir, "meta.json"),
-        )
+        tracer = get_tracer()
+        start = time.monotonic()
+        with tracer.start_span("vm.restore_snapshot", {"snapshot_name": name}) as span:
+            local_dir = os.path.join(self._cache_dir, name)
+            paths = SnapshotPaths(
+                state_file=os.path.join(local_dir, "vmstate.bin"),
+                mem_file=os.path.join(local_dir, "memory.bin"),
+                meta_file=os.path.join(local_dir, "meta.json"),
+            )
 
-        if self._all_exist(paths.state_file, paths.mem_file, paths.meta_file):
-            log.debug("snapshot cache hit", name=name)
+            if self._all_exist(paths.state_file, paths.mem_file, paths.meta_file):
+                log.debug("snapshot cache hit", name=name)
+                result = self._load_meta(paths)
+                span.set_attribute("cache_hit", True)
+                span.set_attribute("duration_ms", int((time.monotonic() - start) * 1000))
+                return result
+
+            log.info("snapshot not cached, downloading via BlobStore", name=name)
+            Path(local_dir).mkdir(parents=True, exist_ok=True)
+
+            for blob in self._BLOBS:
+                key = f"{name}/{blob}"
+                dest = os.path.join(local_dir, blob)
+                data = self._storage.download(key)
+                Path(dest).write_bytes(data)
+                log.debug("snapshot blob downloaded", key=key, dest=dest)
+
+            span.set_attribute("cache_hit", False)
+            span.set_attribute("duration_ms", int((time.monotonic() - start) * 1000))
             return self._load_meta(paths)
-
-        log.info("snapshot not cached, downloading via BlobStore", name=name)
-        Path(local_dir).mkdir(parents=True, exist_ok=True)
-
-        for blob in self._BLOBS:
-            key = f"{name}/{blob}"
-            dest = os.path.join(local_dir, blob)
-            data = self._storage.download(key)
-            Path(dest).write_bytes(data)
-            log.debug("snapshot blob downloaded", key=key, dest=dest)
-
-        return self._load_meta(paths)
 
     def upload(self, name: str, local_dir: str) -> None:
         """Upload all snapshot blobs from local_dir under <name>/ prefix."""
