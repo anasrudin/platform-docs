@@ -117,8 +117,96 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# ── Subcommand stubs (filled in later tasks) ──────────────────────────────────
-cmd_setup()    { echo "setup not yet implemented"; }
+# ── Setup steps ───────────────────────────────────────────────────────────────
+install_deps() {
+  step "Installing Python dependencies"
+  if [[ -f "$WORKER_DIR/.venv/bin/platform-api" ]]; then
+    ok "platform-api already installed, skipping"
+    return 0
+  fi
+  (
+    cd "$WORKER_DIR"
+    run uv venv .venv
+    run uv pip install -e ".[dev]"
+  )
+  ok "Python deps installed"
+}
+
+setup_infra() {
+  step "Starting infrastructure"
+  run docker compose -f "$SERVICES_DIR/docker-compose.yml" up -d
+  poll_healthy "docker infra" \
+    "! docker compose -f '$SERVICES_DIR/docker-compose.yml' ps --format '{{.Health}}' 2>/dev/null | grep -qE 'starting|unhealthy'" \
+    60 || { fail "Check: docker compose -f $SERVICES_DIR/docker-compose.yml ps"; exit 1; }
+}
+
+upload_snapshot() {
+  step "Uploading snapshot to MinIO"
+
+  # Configure mc alias (needed for existence check too)
+  run "$MC" alias set sb-local "$MINIO_ENDPOINT" \
+    "$MINIO_ACCESS_KEY" "$MINIO_SECRET_KEY" --quiet
+
+  # Idempotent: skip if already uploaded
+  if [[ "$DRY_RUN" != "true" ]] && \
+     "$MC" ls "sb-local/${MINIO_BUCKET}/${SNAPSHOT_NAME}/meta.json" &>/dev/null 2>&1; then
+    ok "Snapshot $SNAPSHOT_NAME already in MinIO, skipping"
+    return 0
+  fi
+
+  # Create temporary snapshot files
+  local tmp_dir
+  tmp_dir="$(mktemp -d)"
+  # shellcheck disable=SC2064
+  trap "rm -rf '$tmp_dir'" RETURN
+
+  # upload-minio.sh expects: state, mem, meta.json
+  run bash -c "dd if=/dev/zero bs=1k count=4 2>/dev/null | gzip > '$tmp_dir/state'"
+  run bash -c "dd if=/dev/zero bs=1k count=4 2>/dev/null | gzip > '$tmp_dir/mem'"
+  run bash -c "cat > '$tmp_dir/meta.json' << 'METAEOF'
+{
+  \"name\": \"${SNAPSHOT_NAME}\",
+  \"version\": \"3.12\",
+  \"kernel\": \"vmlinux-5.10\",
+  \"rootfs\": \"${SNAPSHOT_NAME}.ext4\",
+  \"vcpus\": 2,
+  \"mem_mib\": 512,
+  \"dry_run\": true,
+  \"files\": {}
+}
+METAEOF"
+
+  # Delegate upload to existing script
+  MINIO_ENDPOINT="$MINIO_ENDPOINT" \
+  MINIO_ACCESS_KEY="$MINIO_ACCESS_KEY" \
+  MINIO_SECRET_KEY="$MINIO_SECRET_KEY" \
+  MINIO_BUCKET="$MINIO_BUCKET" \
+  run "$TOOLS_DIR/snapshot-builder/upload-minio.sh" \
+    --snapshot-dir "$tmp_dir" \
+    --name "$SNAPSHOT_NAME"
+  ok "Snapshot $SNAPSHOT_NAME uploaded"
+}
+
+# ── Subcommand implementations ────────────────────────────────────────────────
+cmd_setup() {
+  log "Setting up macOS sim-mode sandbox"
+  mkdir -p "$STATE_DIR"
+  check_prereqs
+  ensure_mc
+  install_deps
+  setup_infra
+  upload_snapshot
+  start_api       # defined in Task 4
+  deploy_nomad    # defined in Task 4
+  echo "$SNAPSHOT_NAME" > "$STATE_DIR/snapshot-name"
+  echo ""
+  ok "Setup complete. Run: $0 test"
+}
+
+# Temporary stubs for Task 4 functions (will be replaced)
+start_api()    { log "start_api: not yet implemented"; }
+deploy_nomad() { log "deploy_nomad: not yet implemented"; }
+
 cmd_test()     { echo "test not yet implemented"; }
 cmd_teardown() { echo "teardown not yet implemented"; }
 cmd_status()   { echo "status not yet implemented"; }
