@@ -309,9 +309,152 @@ EOF
   ok "Nomad job $job_name deployed"
 }
 
-cmd_test()     { echo "test not yet implemented"; }
-cmd_teardown() { echo "teardown not yet implemented"; }
-cmd_status()   { echo "status not yet implemented"; }
+cmd_test() {
+  step "End-to-end test"
+
+  # Guard: api must be healthy
+  if ! curl -sf "${API_URL}/health" \
+       | jq -e '.status=="healthy"' > /dev/null 2>&1; then
+    fail "platform-api is not running. Run: $0 setup"
+    exit 1
+  fi
+
+  # 1. Create session
+  log "POST /sessions..."
+  local session_resp session_id
+  session_resp=$(curl -sf -X POST "${API_URL}/sessions" \
+    -H "Content-Type: application/json" \
+    -d '{"runtime":"microvm"}')
+  session_id=$(echo "$session_resp" | jq -r '.session_id')
+  ok "session_id: $session_id"
+
+  # 2. Execute code
+  log "POST /execute python_run..."
+  local exec_resp status output
+  exec_resp=$(curl -sf -X POST "${API_URL}/execute" \
+    -H "Content-Type: application/json" \
+    -d "{\"session_id\":\"$session_id\",\"tool\":\"python_run\",\"input\":{\"code\":\"print('hello from sandbox')\"}}")
+  status=$(echo "$exec_resp" | jq -r '.status')
+  output=$(echo "$exec_resp" | jq -r '.output')
+
+  # 3. Assert
+  local passed=true
+  [[ "$status" != "completed" ]] && {
+    fail "Expected status=completed, got: $status"; passed=false; }
+  echo "$output" | grep -q "hello from Python" || {
+    fail "Expected output to contain 'hello from Python'"; passed=false; }
+
+  if [[ "$passed" == "true" ]]; then
+    echo ""
+    ok "PASS — status=completed, output contains 'hello from Python'"
+    echo ""
+    echo "$exec_resp" | jq
+  else
+    echo ""
+    fail "FAIL — full response:"
+    echo "$exec_resp" | jq >&2
+    exit 1
+  fi
+}
+
+cmd_teardown() {
+  step "Tearing down"
+
+  # Stop platform-api
+  if [[ -f "$STATE_DIR/api.pid" ]]; then
+    local pid
+    pid=$(cat "$STATE_DIR/api.pid")
+    log "Stopping platform-api (pid=$pid)..."
+    kill -TERM "$pid" 2>/dev/null || true
+    sleep 2
+    kill -KILL "$pid" 2>/dev/null || true
+    rm -f "$STATE_DIR/api.pid"
+    ok "platform-api stopped"
+  else
+    log "platform-api not running"
+  fi
+
+  # Stop Nomad job
+  if [[ "$NO_NOMAD" == "false" && -f "$STATE_DIR/nomad-job.txt" ]]; then
+    local job_name
+    job_name=$(cat "$STATE_DIR/nomad-job.txt")
+    log "Stopping Nomad job $job_name..."
+    nomad job stop "$job_name" 2>/dev/null || true
+    rm -f "$STATE_DIR/nomad-job.txt"
+    ok "Nomad job stopped"
+  fi
+
+  # Stop infra
+  log "Stopping docker compose..."
+  run docker compose -f "$SERVICES_DIR/docker-compose.yml" down
+  ok "Infrastructure stopped"
+
+  # Clear state
+  rm -rf "$STATE_DIR"
+  ok "State cleared"
+
+  # Purge (optional)
+  if [[ "$PURGE" == "true" ]]; then
+    log "Purging MinIO snapshot $SNAPSHOT_NAME..."
+    [[ -f "$MC" ]] && run "$MC" rm --recursive --force \
+      "sb-local/${MINIO_BUCKET}/${SNAPSHOT_NAME}" 2>/dev/null || true
+    log "Removing venv..."
+    run rm -rf "$WORKER_DIR/.venv"
+    ok "Purge complete"
+  fi
+
+  ok "Teardown complete"
+}
+
+cmd_status() {
+  echo ""
+  printf "${BOLD}%-22s %s${NC}\n" "Component" "Status"
+  printf "%-22s %s\n" "──────────────────────" "──────────────────────────"
+
+  # Docker infra
+  local infra_status="stopped"
+  if docker compose -f "$SERVICES_DIR/docker-compose.yml" ps -q 2>/dev/null \
+       | grep -q .; then
+    local n
+    n=$(docker compose -f "$SERVICES_DIR/docker-compose.yml" ps -q 2>/dev/null \
+        | wc -l | tr -d ' ')
+    infra_status="running ($n containers)"
+  fi
+  printf "%-22s %s\n" "docker infra" "$infra_status"
+
+  # platform-api
+  local api_status="stopped"
+  if [[ -f "$STATE_DIR/api.pid" ]]; then
+    local pid
+    pid=$(cat "$STATE_DIR/api.pid")
+    if kill -0 "$pid" 2>/dev/null; then
+      api_status="running  pid=$pid"
+    else
+      api_status="dead (stale pid=$pid)"
+    fi
+  fi
+  printf "%-22s %s\n" "platform-api" "$api_status"
+
+  # Nomad
+  local nomad_status="not deployed"
+  if [[ -f "$STATE_DIR/nomad-job.txt" ]]; then
+    local job_name
+    job_name=$(cat "$STATE_DIR/nomad-job.txt")
+    if command -v nomad &>/dev/null \
+       && nomad job status "$job_name" 2>/dev/null | grep -q "Status.*running"; then
+      nomad_status="running ($job_name)"
+    else
+      nomad_status="stopped ($job_name)"
+    fi
+  fi
+  printf "%-22s %s\n" "nomad job" "$nomad_status"
+
+  # mc binary
+  local mc_status="not downloaded"
+  [[ -f "$MC" ]] && mc_status="cached"
+  printf "%-22s %s\n" "mc binary" "$mc_status"
+  echo ""
+}
 
 # ── Dispatch ──────────────────────────────────────────────────────────────────
 case "$SUBCOMMAND" in
