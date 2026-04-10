@@ -34,7 +34,7 @@ fail() { echo -e "${RED}  ✗${NC} $*" >&2; }
 step() { echo -e "\n${BOLD}── $* ──${NC}"; }
 
 run() {
-  if [[ "$DRY_RUN" == "true" ]]; then echo "[dry-run] $*"; else "$@"; fi
+  if [[ "$DRY_RUN" == "true" ]]; then printf '[dry-run]'; printf ' %q' "$@"; printf '\n'; else "$@"; fi
 }
 
 # ── Argument parsing ──────────────────────────────────────────────────────────
@@ -65,7 +65,7 @@ case "$SUBCOMMAND" in
   test)     cmd_test     ;;
   teardown) cmd_teardown ;;
   status)   cmd_status   ;;
-  *)
+  ""|--help|-h)
     echo "Usage: $0 <setup|test|teardown|status> [options]"
     echo "Options:"
     echo "  --snapshot-name NAME    (default: python-v1)"
@@ -74,6 +74,11 @@ case "$SUBCOMMAND" in
     echo "  --no-nomad              Skip Nomad job"
     echo "  --dry-run               Print commands, do not execute"
     echo "  --purge                 teardown: also delete snapshot + venv"
+    exit 0
+    ;;
+  *)
+    fail "Unknown subcommand: $SUBCOMMAND"
+    echo "Run '$0 --help' for usage." >&2
     exit 1
     ;;
 esac
