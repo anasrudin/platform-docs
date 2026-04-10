@@ -99,7 +99,7 @@ poll_healthy() {
   log "Waiting for $label (max ${max_seconds}s)..."
   local i=0 interval=2
   while (( i * interval < max_seconds )); do
-    if eval "$check_cmd" &>/dev/null 2>&1; then
+    if eval "$check_cmd" &>/dev/null; then
       echo ""
       ok "$label is ready"
       return 0
@@ -138,7 +138,7 @@ install_deps() {
   fi
   (
     cd "$WORKER_DIR"
-    run uv venv .venv
+    run uv venv .venv --python 3.12
     run uv pip install -e ".[dev]"
   )
   ok "Python deps installed"
@@ -148,7 +148,7 @@ setup_infra() {
   step "Starting infrastructure"
   run docker compose -f "$SERVICES_DIR/docker-compose.yml" up -d
   poll_healthy "docker infra" \
-    "! docker compose -f '$SERVICES_DIR/docker-compose.yml' ps --format '{{.Health}}' 2>/dev/null | grep -qE 'starting|unhealthy'" \
+    "docker compose -f '$SERVICES_DIR/docker-compose.yml' ps --format '{{.Health}}' 2>/dev/null | grep -q 'healthy'" \
     60 || { fail "Check: docker compose -f $SERVICES_DIR/docker-compose.yml ps"; exit 1; }
 }
 
@@ -170,10 +170,12 @@ upload_snapshot() {
   fi
 
   # Use snapshot-builder.sh with --skip-rootfs --skip-snapshot for dummy snapshot
+  PATH="$BIN_DIR:$PATH" \
   SNAPSHOT_OUT_DIR="/tmp/runbook-snapshots" \
   MINIO_ENDPOINT="$MINIO_ENDPOINT" \
   MINIO_ACCESS_KEY="$MINIO_ACCESS_KEY" \
   MINIO_SECRET_KEY="$MINIO_SECRET_KEY" \
+  MINIO_BUCKET="$MINIO_BUCKET" \
   run "$TOOLS_DIR/snapshot-builder/snapshot-builder.sh" \
     --name "$SNAPSHOT_NAME" \
     --skip-rootfs \
@@ -346,6 +348,7 @@ cmd_setup() {
 }
 
 cmd_test() {
+  [[ -f "$STATE_DIR/snapshot-name" ]] && SNAPSHOT_NAME="$(cat "$STATE_DIR/snapshot-name")"
   step "End-to-end test"
 
   if ! curl -sf "${API_URL}/health" \
@@ -390,6 +393,7 @@ cmd_test() {
 }
 
 cmd_teardown() {
+  [[ -f "$STATE_DIR/snapshot-name" ]] && SNAPSHOT_NAME="$(cat "$STATE_DIR/snapshot-name")"
   step "Tearing down"
 
   # Stop fc-agent first
@@ -398,7 +402,7 @@ cmd_teardown() {
     pid=$(cat "$STATE_DIR/fc-agent.pid")
     log "Stopping fc-agent (pid=$pid)..."
     kill -TERM "$pid" 2>/dev/null || true
-    sleep 2
+    sleep 5
     kill -KILL "$pid" 2>/dev/null || true
     rm -f "$STATE_DIR/fc-agent.pid"
     ok "fc-agent stopped"
@@ -412,7 +416,7 @@ cmd_teardown() {
     pid=$(cat "$STATE_DIR/api.pid")
     log "Stopping platform-api (pid=$pid)..."
     kill -TERM "$pid" 2>/dev/null || true
-    sleep 2
+    sleep 5
     kill -KILL "$pid" 2>/dev/null || true
     rm -f "$STATE_DIR/api.pid"
     ok "platform-api stopped"
