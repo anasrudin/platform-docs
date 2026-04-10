@@ -405,6 +405,8 @@ FC_MODE=sim \
 
 **7b. Create a session**
 
+> **Note on session validation:** `POST /execute` accepts any `session_id` string — it is not validated against the session store (`service/execution.py:27-29`). The session creation step below is recommended for correctness (especially for `snapshot_mode: "continuous"` which uses the session_id as a key), but technically you can call `POST /execute` with any UUID and it will succeed.
+
 ```bash
 SESSION=$(curl -s -X POST http://localhost:8080/sessions \
   -H "Content-Type: application/json" \

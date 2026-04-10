@@ -183,7 +183,7 @@ Expected:
 
 > The `pool_size` value reflects `FC_POOL_SIZE` (default: `2`).
 >
-> **Known limitation (real mode):** `platform-api` currently starts with `storage=None` passed to `VMLifecycleManager`, which means the snapshot downloader has no BlobStore and will fail when trying to pull snapshots from MinIO in real mode. The VM pool warmup will fail and the process will fall back to sim mode automatically. A proper `MinioSnapshotStore` implementation needs to be wired in `api/app.py` before real-mode pool warmup works end-to-end. In the meantime, use `FC_MODE=sim` for local dev (section 3 of the macOS runbook) or pre-populate the snapshot cache manually (see section 4 below).
+> **Known limitation (real mode):** `platform-api` currently starts with `storage=None` passed to `VMLifecycleManager` (`api/app.py:82`). In real mode, `VMLifecycleManager.start()` detects that `storage=None` and raises `RuntimeError` — the process **crashes on startup**, it does not fall back to sim mode. (The fallback-to-sim behavior exists only in `Runtime._warmup()` used by `fc-agent`, not in `VMLifecycleManager` used by `platform-api`.) A proper `MinioSnapshotStore` implementation needs to be wired in `api/app.py` before real-mode pool warmup works end-to-end. In the meantime, use `FC_MODE=sim` for local dev (section 3 of the macOS runbook) or pre-populate the snapshot cache manually (see section 4 below).
 
 Troubleshoot: if MinIO is unreachable, confirm Docker is running and `docker compose ps` from `services/` shows port `9000->9000`.
 
@@ -567,7 +567,10 @@ Troubleshoot: if `raw_exec` is disabled, it is enabled by default in `-dev` mode
 
 ## 7. Run Python code end-to-end
 
-> **Note:** `platform-api` runs its own in-process VM lifecycle manager. It does not route requests through the Nomad-deployed fc-agent at runtime. For end-to-end real-mode execution via `POST /execute`, ensure the VM pool warmup completes successfully (check logs after startup) — it requires a valid snapshot in MinIO and the Firecracker binary at `FC_BINARY_PATH` (default `/usr/bin/firecracker`).
+> **Note:** `platform-api` runs its own in-process VM lifecycle manager. It does not route requests through the Nomad-deployed fc-agent at runtime. For end-to-end real-mode execution via `POST /execute`, ensure the VM pool warmup completes successfully (check logs after startup) — it requires:
+> 1. A valid snapshot in MinIO with the name matching `FC_SNAPSHOT_BUCKET` (see 7a).
+> 2. The Firecracker binary at `FC_BINARY_PATH` (default `/usr/bin/firecracker`).
+> 3. **A guest agent pre-installed inside the VM snapshot.** `platform-api` communicates with the VM over vsock port 8080 using `GuestClient` (`runtime/firecracker.py`). The rootfs in your snapshot must have a guest agent process listening on that port that accepts `POST /execute` with a JSON body `{"tool": "...", "input": {...}}` and responds with `{"exit_code": 0, "stdout": "...", "stderr": "..."}`. Without this, `GuestClient.wait_ready()` times out after 15 seconds and execution fails. The guest agent binary and its init configuration must be baked into the rootfs before creating the snapshot.
 
 **7a. Ensure platform-api is running**
 
@@ -577,13 +580,16 @@ From section 3, `platform-api` should be running with `FC_MODE=real`. If not, re
 cd sandbox-worker
 source .venv/bin/activate
 FC_MODE=real \
+  FC_SNAPSHOT_BUCKET=python-v1 \
   MINIO_ENDPOINT=http://localhost:9000 \
   MINIO_ACCESS_KEY=minioadmin \
   MINIO_SECRET_KEY=minioadmin \
   platform-api
 ```
 
-> `SNAPSHOT_NAME` and `SNAPSHOT_CACHE_DIR` are fc-agent env vars and have no effect on `platform-api`. The platform-api reads `FC_SNAPSHOT_BUCKET` (default: `platform-snapshots`) for the snapshot bucket name.
+> `SNAPSHOT_NAME` and `SNAPSHOT_CACHE_DIR` are fc-agent env vars and have no effect on `platform-api`.
+>
+> **`FC_SNAPSHOT_BUCKET` is the snapshot *name*, not the MinIO bucket name.** Despite its name, `config/settings.py` maps `FC_SNAPSHOT_BUCKET` to `snapshot_name` inside `VMLifecycleManager` — it controls which snapshot object is downloaded from MinIO (e.g. `python-v1`), not which bucket to use. The MinIO bucket is always controlled by `MINIO_BUCKET` (default: `platform-artifacts` for artifacts, `platform-snapshots` for snapshots). If you omit `FC_SNAPSHOT_BUCKET`, it defaults to `"platform-snapshots"` which will not match your uploaded snapshot and pool warmup will fail.
 
 **7b. Create a session**
 
