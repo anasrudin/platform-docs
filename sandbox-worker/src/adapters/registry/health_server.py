@@ -11,23 +11,24 @@ from collections.abc import Callable
 
 import uvicorn
 from fastapi import FastAPI, Request, Response
-from sandbox_platform.middleware.trace import TraceIDMiddleware
+
+from api.middleware.request_id import RequestIDMiddleware
 
 
 def make_health_app(
     runtime_name: str,
-    pool_size_fn: Callable[[], int],
+    pool_size_fn: Callable[[], int] | None = None,
 ) -> FastAPI:
     """Build a FastAPI app with a single GET /health endpoint."""
     app = FastAPI()
-    app.add_middleware(TraceIDMiddleware)
+    app.add_middleware(RequestIDMiddleware)
 
     @app.get("/health")
     def health(request: Request, response: Response) -> dict:
         return {
             "status": "ok",
             "runtime": runtime_name,
-            "pool_size": pool_size_fn(),
+            "pool_size": pool_size_fn() if pool_size_fn is not None else 0,
         }
 
     return app
@@ -35,8 +36,8 @@ def make_health_app(
 
 def start_health_server(
     port: int,
-    runtime_name: str,
-    pool_size_fn: Callable[[], int],
+    runtime_name: str = "platform-api",
+    pool_size_fn: Callable[[], int] | None = None,
 ) -> None:
     """Start uvicorn in a daemon thread. Returns immediately."""
     app = make_health_app(runtime_name, pool_size_fn)

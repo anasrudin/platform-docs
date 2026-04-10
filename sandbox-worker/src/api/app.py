@@ -158,7 +158,11 @@ async def lifespan(app: FastAPI):
     # Consul registration — optional
     if cfg.consul.enabled:
         consul = ConsulClient()
-        start_health_server(port=cfg.api.health_port)
+        start_health_server(
+            port=cfg.api.health_port,
+            runtime_name="platform-api",
+            pool_size_fn=lambda: lifecycle_mgr._pool._pool_size if lifecycle_mgr._pool else 0,
+        )
         consul.register(
             name="sandbox-worker",
             port=cfg.api.port,

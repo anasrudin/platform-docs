@@ -4,7 +4,7 @@
 |---|---|
 | Platform | Linux (Debian/Ubuntu recommended), KVM enabled |
 | Firecracker mode | `real` — actual microVM execution |
-| Last updated | 2026-04-10 |
+| Last updated | 2026-04-11 |
 
 This runbook covers: KVM verification → repo setup → infrastructure → build a real Firecracker snapshot → upload to MinIO → load from MinIO → deploy a Nomad job → run Python code via the platform API.
 
@@ -81,7 +81,11 @@ sudo install /tmp/release-${FC_VERSION}-${ARCH}/jailer-${FC_VERSION}-${ARCH} \
 firecracker --version   # Firecracker v1.7.0
 ```
 
-> The repo helper scripts and runtime defaults currently expect the binary at `/usr/bin/firecracker`. If you prefer `/usr/local/bin`, create a symlink into `/usr/bin` before using `tools/snapshot-builder/`.
+> The binary path defaults to `/usr/bin/firecracker`. Override with:
+> - `FC_BIN=/usr/local/bin/firecracker` — for the fc-agent (uses `runtime/firecracker.py` `Config` directly)
+> - `FC_BINARY_PATH=/usr/local/bin/firecracker` — for platform-api (reads from `config/settings.py` `FirecrackerConfig`)
+>
+> If you install Firecracker elsewhere, set **both** when running both processes.
 
 **Install MinIO client mc:**
 
@@ -176,9 +180,10 @@ Expected:
   }
 }
 ```
-> The `pool_size` value reflects the `FC_POOL_SIZE` environment variable (default: `2`).
+
+> The `pool_size` value reflects `FC_POOL_SIZE` (default: `2`).
 >
-> **Known issue:** current `platform-api` startup still has VM-pool warmup wiring issues. If the process exits before `/health` is available, treat section 3 as the intended workflow and continue with sections 4-5 to validate snapshot artifacts directly.
+> **Known limitation (real mode):** `platform-api` currently starts with `storage=None` passed to `VMLifecycleManager`, which means the snapshot downloader has no BlobStore and will fail when trying to pull snapshots from MinIO in real mode. The VM pool warmup will fail and the process will fall back to sim mode automatically. A proper `MinioSnapshotStore` implementation needs to be wired in `api/app.py` before real-mode pool warmup works end-to-end. In the meantime, use `FC_MODE=sim` for local dev (section 3 of the macOS runbook) or pre-populate the snapshot cache manually (see section 4 below).
 
 Troubleshoot: if MinIO is unreachable, confirm Docker is running and `docker compose ps` from `services/` shows port `9000->9000`.
 
@@ -188,11 +193,7 @@ Troubleshoot: if MinIO is unreachable, confirm Docker is running and `docker com
 
 A real Firecracker snapshot captures full VM state: CPU registers, memory, and disk. Restoring from snapshot boots a VM in 20–80ms instead of a full kernel boot.
 
-Recommended for this repo: use the helper scripts in `tools/snapshot-builder/`. They match the current local artifact layout:
-- local files: `<out-dir>/<name>/state`, `mem`, `meta.json`
-- uploaded objects: `<name>/vmstate.bin`, `memory.bin`, `meta.json`
-
-Run from the repo root (`platform-docs/`):
+Recommended: use the helper scripts in `tools/snapshot-builder/`. Run from the repo root (`platform-docs/`):
 
 ```bash
 tools/snapshot-builder/test/test-snapshot-builder.sh
@@ -351,7 +352,7 @@ cat > /tmp/python-v1/meta.json <<'EOF'
   "rootfs": "python-v1.ext4",
   "vcpus": 2,
   "mem_mib": 512,
-  "created_at": "2026-04-10T00:00:00",
+  "created_at": "2026-04-11T00:00:00",
   "dry_run": false,
   "files": {}
 }
@@ -413,10 +414,6 @@ Expected (three objects, non-zero sizes):
 
 **5b. Test snapshot load via fc-agent**
 
-> **Known issue:** The `fc-agent` entry point currently fails to start because the `agents` package is not yet present in `src/`. Running `fc-agent` will produce `ModuleNotFoundError: No module named 'agents'`. Section 5 documents the intended workflow for when the package is available.
->
-> **Current limitation:** there is no standalone HTTP endpoint that forces a named snapshot download independently of the VM pool startup path. Until `fc-agent` startup is repaired, the practical verification available today is `mc ls` for the uploaded objects plus local-cache inspection once the runtime path is fixed.
-
 Clear local cache to force a download:
 
 ```bash
@@ -440,8 +437,13 @@ FC_MODE=real \
 Expected log on first start:
 
 ```
+fc-agent starting  mode=real  snapshot=python-v1
 snapshot not cached, downloading from MinIO  name=python-v1
+snapshot ready  mode=real  snapshot=python-v1  state_file=/tmp/sandbox-cache/python-v1/vmstate.bin
+fc-agent health server started  port=8081
 ```
+
+On second start (cache hit), the `snapshot not cached` line is replaced by a `debug`-level `snapshot cache hit` entry — it only appears when `LOG_LEVEL=debug` is set. With default log config, no snapshot line appears on cache hit — this is expected.
 
 **5c. Verify local cache**
 
@@ -529,8 +531,6 @@ job "sandbox-worker-linux" {
 EOF
 ```
 
-> **Known issue:** `fc-agent` currently fails to start (missing `agents` module — see section 5 warning). The Nomad allocation will show `failed`. This section documents the intended deployment workflow.
-
 **6c. Run the job**
 
 ```bash
@@ -552,7 +552,7 @@ Expected:
 nomad job status sandbox-worker-linux
 ```
 
-Expected: `Status = running` (or `failed` if fc-agent module issue is not resolved).
+Expected: `Status = running`.
 
 View logs:
 
@@ -567,9 +567,7 @@ Troubleshoot: if `raw_exec` is disabled, it is enabled by default in `-dev` mode
 
 ## 7. Run Python code end-to-end
 
-> **Known issue:** `POST /execute` currently fails with HTTP 500 due to a code bug: `ExecutionService.execute()` calls `vm.run(job)` but `FirecrackerVM` only exposes `.execute(tool, input_data)`. The steps below document the intended workflow. To test the API layer without the VM, use `POST /sessions` and `GET /health` which do not invoke the VM pool.
-
-> **Note:** `platform-api` runs its own in-process VM lifecycle manager in dev mode. It does not route requests through the Nomad-deployed fc-agent at runtime.
+> **Note:** `platform-api` runs its own in-process VM lifecycle manager. It does not route requests through the Nomad-deployed fc-agent at runtime. For end-to-end real-mode execution via `POST /execute`, ensure the VM pool warmup completes successfully (check logs after startup) — it requires a valid snapshot in MinIO and the Firecracker binary at `FC_BINARY_PATH` (default `/usr/bin/firecracker`).
 
 **7a. Ensure platform-api is running**
 
@@ -579,14 +577,13 @@ From section 3, `platform-api` should be running with `FC_MODE=real`. If not, re
 cd sandbox-worker
 source .venv/bin/activate
 FC_MODE=real \
-  SNAPSHOT_NAME=python-v1 \
-  SNAPSHOT_CACHE_DIR=/tmp/sandbox-cache \
   MINIO_ENDPOINT=http://localhost:9000 \
   MINIO_ACCESS_KEY=minioadmin \
   MINIO_SECRET_KEY=minioadmin \
-  MINIO_BUCKET=platform-snapshots \
   platform-api
 ```
+
+> `SNAPSHOT_NAME` and `SNAPSHOT_CACHE_DIR` are fc-agent env vars and have no effect on `platform-api`. The platform-api reads `FC_SNAPSHOT_BUCKET` (default: `platform-snapshots`) for the snapshot bucket name.
 
 **7b. Create a session**
 
@@ -621,9 +618,7 @@ curl -s -X POST http://localhost:8080/execute \
   }" | jq
 ```
 
-> **Current behavior (before bug fix):** Returns HTTP 500 with `AttributeError: 'FirecrackerVM' object has no attribute 'run'`.
->
-> **Intended behavior (after bug fix):** In real mode, the request restores a VM from snapshot, executes the Python code inside the guest, and returns:
+Expected (real mode — snapshot restores a VM and runs code inside the guest):
 
 ```json
 {

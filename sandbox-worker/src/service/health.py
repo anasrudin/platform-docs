@@ -14,11 +14,15 @@ class HealthService:
 
         if self._mgr is not None:
             try:
-                pool = self._mgr._pool
-                if pool is not None:
-                    services["vm_pool"] = f"healthy (pool_size={pool._pool_size})"
+                if getattr(self._mgr, "_sim_mode", False):
+                    pool_size = getattr(self._mgr, "_pool_size", 0)
+                    services["vm_pool"] = f"healthy (pool_size={pool_size})"
                 else:
-                    services["vm_pool"] = "not started"
+                    pool = self._mgr._pool
+                    if pool is not None:
+                        services["vm_pool"] = f"healthy (pool_size={pool._pool_size})"
+                    else:
+                        services["vm_pool"] = "not started"
             except Exception as exc:
                 services["vm_pool"] = f"unhealthy: {exc}"
         else:
