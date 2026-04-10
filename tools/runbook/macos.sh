@@ -203,9 +203,111 @@ cmd_setup() {
   ok "Setup complete. Run: $0 test"
 }
 
-# Temporary stubs for Task 4 functions (will be replaced)
-start_api()    { log "start_api: not yet implemented"; }
-deploy_nomad() { log "deploy_nomad: not yet implemented"; }
+start_api() {
+  step "Starting platform-api"
+
+  # Idempotent: skip if already running
+  if [[ -f "$STATE_DIR/api.pid" ]]; then
+    local pid
+    pid=$(cat "$STATE_DIR/api.pid")
+    if kill -0 "$pid" 2>/dev/null; then
+      ok "platform-api already running (pid=$pid)"
+      return 0
+    fi
+    warn "Stale PID $pid found, restarting..."
+    rm -f "$STATE_DIR/api.pid"
+  fi
+
+  if [[ "$DRY_RUN" == "true" ]]; then
+    log "[dry-run] would start platform-api (FC_MODE=sim)"
+    return 0
+  fi
+
+  local log_file="$STATE_DIR/api.log"
+  FC_MODE=sim \
+  MINIO_ENDPOINT="$MINIO_ENDPOINT" \
+  MINIO_ACCESS_KEY="$MINIO_ACCESS_KEY" \
+  MINIO_SECRET_KEY="$MINIO_SECRET_KEY" \
+    "$WORKER_DIR/.venv/bin/platform-api" \
+    > "$log_file" 2>&1 &
+  local pid=$!
+  echo "$pid" > "$STATE_DIR/api.pid"
+  log "platform-api started (pid=$pid), waiting for health..."
+
+  poll_healthy "platform-api /health" \
+    "curl -sf '${API_URL}/health' | jq -e '.status==\"healthy\"' > /dev/null" \
+    30 || {
+      fail "platform-api did not become healthy. Logs:"
+      tail -20 "$log_file" >&2
+      exit 1
+    }
+}
+
+deploy_nomad() {
+  step "Deploying Nomad job"
+
+  if [[ "$NO_NOMAD" == "true" ]]; then
+    log "Skipping Nomad job (--no-nomad)"
+    return 0
+  fi
+
+  if ! command -v nomad &>/dev/null; then
+    warn "nomad not in PATH — skipping job deployment"
+    return 0
+  fi
+
+  if ! nomad node status &>/dev/null 2>&1; then
+    warn "Nomad agent not running."
+    warn "Start with: sudo nomad agent -dev -bind=0.0.0.0 -network-interface=lo0"
+    warn "Skipping Nomad job deployment"
+    return 0
+  fi
+
+  local job_name="sandbox-worker-macos"
+  local venv_path="$WORKER_DIR/.venv"
+  local job_file
+  job_file="$(mktemp /tmp/sandbox-worker-macos-XXXXX.nomad)"
+  # shellcheck disable=SC2064
+  trap "rm -f '$job_file'" RETURN
+
+  cat > "$job_file" <<EOF
+job "$job_name" {
+  datacenters = ["dc1"]
+  type        = "service"
+
+  group "fc-agent" {
+    count = 1
+
+    task "fc-agent" {
+      driver = "raw_exec"
+
+      config {
+        command = "${venv_path}/bin/fc-agent"
+      }
+
+      env {
+        FC_MODE            = "sim"
+        FC_SNAPSHOT_BUCKET = "${SNAPSHOT_NAME}"
+        SNAPSHOT_CACHE_DIR = "/tmp/sandbox-cache"
+        MINIO_ENDPOINT     = "${MINIO_ENDPOINT}"
+        MINIO_ACCESS_KEY   = "${MINIO_ACCESS_KEY}"
+        MINIO_SECRET_KEY   = "${MINIO_SECRET_KEY}"
+        MINIO_BUCKET       = "${MINIO_BUCKET}"
+      }
+
+      resources {
+        cpu    = 500
+        memory = 512
+      }
+    }
+  }
+}
+EOF
+
+  run nomad job run "$job_file"
+  echo "$job_name" > "$STATE_DIR/nomad-job.txt"
+  ok "Nomad job $job_name deployed"
+}
 
 cmd_test()     { echo "test not yet implemented"; }
 cmd_teardown() { echo "teardown not yet implemented"; }
