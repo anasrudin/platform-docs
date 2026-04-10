@@ -34,7 +34,7 @@ dev: infra-up
 
 run:
 	@echo "Starting platform-api..."
-	$(UVICORN) platform_cmd.platform_api:app --host 0.0.0.0 --port 8080 --reload
+	$(UVICORN) api.app:app --host 0.0.0.0 --port 8080 --reload
 
 stop:
 	@echo "Stopping services..."

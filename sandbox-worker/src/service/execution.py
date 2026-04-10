@@ -47,7 +47,12 @@ class ExecutionService:
             start = time.monotonic()
             vm = self._mgr.acquire(timeout=30.0)
             try:
-                result: RuntimeResult = vm.run(job)
+                resp = vm.execute(job.tool, job.input)
+                result = RuntimeResult(
+                    stdout=resp.stdout,
+                    stderr=resp.stderr,
+                    exit_code=resp.exit_code,
+                )
             finally:
                 self._mgr.release(vm)
 

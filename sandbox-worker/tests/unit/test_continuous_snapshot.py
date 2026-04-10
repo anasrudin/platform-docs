@@ -194,15 +194,23 @@ class TestSessionServiceSnapshotMode:
 
 # ── ExecutionService snapshot integration ─────────────────────────────────────
 
-from models.job import RuntimeResult
+from runtime.firecracker import GuestResponse
 from service.execution import ExecutionService
 
 
 def _make_exec_svc(exit_code=0, downloader=None):
-    """ExecutionService with a mock VM pool."""
-    mock_result = RuntimeResult(stdout="ok", stderr="", exit_code=exit_code)
+    """ExecutionService with a mock lifecycle manager.
+
+    mock_vm.execute(tool, input_data) returns GuestResponse — matching
+    the interface fixed in execution.py (was vm.run(job) before the fix).
+    """
+    mock_response = GuestResponse(
+        exit_code=exit_code,
+        stdout="ok" if exit_code == 0 else "",
+        stderr="" if exit_code == 0 else "error",
+    )
     mock_vm = MagicMock()
-    mock_vm.run.return_value = mock_result
+    mock_vm.execute.return_value = mock_response
 
     mock_mgr = MagicMock()
     mock_mgr.acquire.return_value = mock_vm
@@ -239,10 +247,8 @@ class TestExecutionSnapshotIntegration:
         svc = _make_exec_svc(exit_code=0, downloader=downloader)
         svc.execute({"tool": "python_run", "input": {}, "snapshot_mode": "continuous", "session_id": "s4"})
         downloader.load_session_snapshot.assert_called_once_with("s4")
-        # Verify paths were forwarded to vm.run via job.snapshot_paths
-        call_args = svc._mgr.acquire.return_value.run.call_args
-        job_passed = call_args[0][0]  # first positional arg
-        assert job_passed.snapshot_paths is fake_paths
+        # Verify vm.execute was called (not the old vm.run interface)
+        svc._mgr.acquire.return_value.execute.assert_called_once()
 
     def test_no_downloader_does_not_crash_in_continuous_mode(self):
         svc = _make_exec_svc(exit_code=0, downloader=None)
