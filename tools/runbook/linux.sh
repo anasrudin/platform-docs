@@ -37,6 +37,70 @@ run() {
   if [[ "$DRY_RUN" == "true" ]]; then printf '[dry-run]'; printf ' %q' "$@"; printf '\n'; else "$@"; fi
 }
 
+# ── mc download ───────────────────────────────────────────────────────────────
+ensure_mc() {
+  if [[ -f "$MC" ]]; then
+    log "mc cached at $MC"
+    return 0
+  fi
+  mkdir -p "$BIN_DIR"
+  local os arch
+  os="$(uname -s | tr '[:upper:]' '[:lower:]')"
+  arch="$(uname -m)"
+  case "$arch" in
+    arm64|aarch64) arch="arm64" ;;
+    x86_64|amd64)  arch="amd64" ;;
+    *) fail "Unsupported architecture: $arch"; exit 1 ;;
+  esac
+  local url="https://dl.min.io/client/mc/release/${os}-${arch}/mc"
+  log "Downloading mc from $url..."
+  run curl -fsSL "$url" -o "$MC"
+  [[ "$DRY_RUN" != "true" ]] && chmod +x "$MC"
+  ok "mc downloaded → $MC"
+}
+
+# ── Prerequisites ─────────────────────────────────────────────────────────────
+check_prereqs() {
+  local missing=()
+  local required=(python3 docker uv jq curl)
+  [[ "$NO_NOMAD" == "false" ]] && required+=(nomad)
+  for cmd in "${required[@]}"; do
+    command -v "$cmd" &>/dev/null || missing+=("$cmd")
+  done
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    fail "Missing required tools: ${missing[*]}"
+    fail "Install them and retry."
+    exit 1
+  fi
+  ok "Prerequisites: ${required[*]}"
+}
+
+# ── Poll helper ───────────────────────────────────────────────────────────────
+# poll_healthy LABEL CHECK_CMD [MAX_SECONDS]
+# CHECK_CMD is evaluated with eval; returns 0 when ready.
+poll_healthy() {
+  local label="$1" check_cmd="$2" max_seconds="${3:-30}"
+  if [[ "$DRY_RUN" == "true" ]]; then
+    log "[dry-run] would poll: $label"
+    return 0
+  fi
+  log "Waiting for $label (max ${max_seconds}s)..."
+  local i=0 interval=2
+  while (( i * interval < max_seconds )); do
+    if eval "$check_cmd" &>/dev/null 2>&1; then
+      echo ""
+      ok "$label is ready"
+      return 0
+    fi
+    echo -n "."
+    sleep "$interval"
+    (( i++ )) || true
+  done
+  echo ""
+  fail "$label not ready after ${max_seconds}s"
+  return 1
+}
+
 # ── Argument parsing ──────────────────────────────────────────────────────────
 SUBCOMMAND="${1:-}"
 shift || true
