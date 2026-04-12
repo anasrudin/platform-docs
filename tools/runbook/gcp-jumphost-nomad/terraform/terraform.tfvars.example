@@ -1,15 +1,33 @@
-project_id = "agent-automation-470608"
+# Copy to terraform.tfvars and fill in the required values.
+#
+# Required:
+#   project_id  — your GCP project
+#   admin_cidr  — your public IP (curl -4 ifconfig.me) followed by /32
+#   ssh_user    — your GCP / OS Login username
+
+project_id = "your-gcp-project-id"
 region     = "asia-southeast1"
 zone       = "asia-southeast1-a"
 
-# Ganti dengan IP publik Anda sendiri, mis. "203.0.113.10/32".
-admin_cidr = "0.0.0.0/0"
+# Your public IP — restricts SSH and service port access to your machine only.
+# Run: curl -4 ifconfig.me
+admin_cidr = "YOUR_PUBLIC_IP/32"
 
-jumphost_name = "jumphost"
-nomad_name    = "nomad"
-nomad_machine_type = "n2-standard-4"
+jumphost_name      = "jumphost"
+nomad_name         = "nomad"
+nomad_machine_type = "n2-standard-4"   # Intel, nested-virt enabled for KVM
 
-ssh_user = "annas"
+# Your GCP / OS Login username (same as `gcloud config get-value account` prefix)
+ssh_user = "your_username"
+
+# Give the Nomad VM a public IP so service ports are directly reachable.
+# Required for the demo. Set false to use the jumphost as a bastion only.
+expose_nomad_public_ip = true
+
+# FC_MODE for the platform-api Nomad job.
+#   sim  — no Firecracker snapshot required; safe for demo (default)
+#   real — actual microVM execution; requires snapshot in MinIO
+fc_mode = "sim"
 
 service_account_roles = [
   "roles/logging.logWriter",

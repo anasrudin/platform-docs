@@ -40,7 +40,7 @@ variable "subnet_cidr" {
 }
 
 variable "admin_cidr" {
-  description = "CIDR allowed to SSH into the jumphost."
+  description = "CIDR allowed to SSH into the jumphost and reach platform service ports. Use your public IP: curl -4 ifconfig.me"
   type        = string
 }
 
@@ -63,13 +63,13 @@ variable "jumphost_machine_type" {
 }
 
 variable "nomad_machine_type" {
-  description = "Machine type for the Nomad VM."
+  description = "Machine type for the Nomad VM. Must support nested virtualization (Intel n2/n1/c2)."
   type        = string
   default     = "n2-standard-4"
 }
 
 variable "boot_disk_size_gb" {
-  description = "Boot disk size for both VMs."
+  description = "Boot disk size for both VMs (GB)."
   type        = number
   default     = 30
 }
@@ -87,7 +87,7 @@ variable "image_project" {
 }
 
 variable "ssh_user" {
-  description = "Linux user name used when SSHing from jumphost to Nomad."
+  description = "Linux username used when SSHing from jumphost to Nomad and for app deployment."
   type        = string
 }
 
@@ -113,30 +113,39 @@ variable "service_account_roles" {
   ]
 }
 
-# ── Layer topology ────────────────────────────────────────────────────────────
-# Untuk sekarang semua layer di 1 VM (nomad). Variabel ini menyiapkan
-# pondasi agar mudah dipisah ke VM berbeda di masa depan.
+variable "expose_nomad_public_ip" {
+  description = "Give the Nomad VM a public IP. Required for direct demo access (platform-api, Nomad UI, Consul, Jaeger, MinIO)."
+  type        = bool
+  default     = true
+}
+
+variable "fc_mode" {
+  description = "FC_MODE passed to the platform-api Nomad job. sim = no snapshot required (demo default). real = actual Firecracker microVMs (needs snapshot in MinIO)."
+  type        = string
+  default     = "sim"
+
+  validation {
+    condition     = contains(["sim", "real"], var.fc_mode)
+    error_message = "fc_mode must be 'sim' or 'real'."
+  }
+}
+
+# ── Layer topology (logical names, single-server for now) ─────────────────────
 
 variable "controller_layer_name" {
-  description = "Nama logis layer controller (Nomad, Consul, platform-api)."
+  description = "Logical name for the controller layer (Nomad, Consul, platform-api)."
   type        = string
   default     = "controller"
 }
 
 variable "worker_layer_name" {
-  description = "Nama logis layer worker (Firecracker agents)."
+  description = "Logical name for the worker layer (Firecracker agents)."
   type        = string
   default     = "worker"
 }
 
 variable "data_layer_name" {
-  description = "Nama logis layer data (PostgreSQL, Redis, MinIO, Jaeger)."
+  description = "Logical name for the data layer (PostgreSQL, Redis, MinIO, Jaeger)."
   type        = string
   default     = "data"
-}
-
-variable "expose_nomad_public_ip" {
-  description = "Beri public IP ke Nomad VM (enable access_config). Aktifkan untuk akses langsung tanpa tunnel."
-  type        = bool
-  default     = false
 }

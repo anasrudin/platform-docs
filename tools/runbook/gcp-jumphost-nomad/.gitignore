@@ -7,6 +7,7 @@ terraform/.terraform.lock.hcl
 terraform/terraform.tfstate
 terraform/terraform.tfstate.backup
 terraform/terraform.auto.tfvars
+terraform/terraform.tfvars
 
 # Generated files
 config/*.generated.env

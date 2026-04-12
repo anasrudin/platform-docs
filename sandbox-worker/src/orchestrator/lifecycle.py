@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+import threading
 import time
 import uuid
 
@@ -79,12 +80,20 @@ class VMLifecycleManager:
         self._dev_mode = dev_mode
         self._pool: VMPool | None = None
         self._sim_mode: bool = False
+        self._warmup_thread: threading.Thread | None = None
 
     def start(self) -> None:
-        """Download the snapshot and warm the VM pool.
+        """Start the VM pool in a background thread.
 
-        In FC_MODE=sim (or when /dev/kvm is absent), skip real pool warmup
+        In FC_MODE=sim (or when /dev/kvm is absent), skip pool warmup entirely
         and return _SimVM instances from acquire() instead.
+
+        In real mode, pool warmup runs in a background thread so the app starts
+        up and becomes healthy immediately.  If the snapshot is not yet in MinIO,
+        warmup will fail with a logged error but will not crash the process —
+        acquire() calls will raise TimeoutError until the pool is populated.
+        Upload the snapshot to MinIO and restart, or call warmup() directly once
+        the snapshot is available.
         """
         mode = detect_mode()
         if mode == "sim":
@@ -109,9 +118,24 @@ class VMLifecycleManager:
             dev_mode=self._dev_mode,
             store=_store,
         )
-        log.info("vm pool warming up", pool_size=self._pool_size, snapshot=self._snapshot_name)
-        self._pool.warmup()
-        log.info("vm pool ready")
+        log.info("vm pool warming up in background",
+                 pool_size=self._pool_size, snapshot=self._snapshot_name)
+        self._warmup_thread = threading.Thread(target=self._warmup_bg, daemon=True,
+                                               name="vm-pool-warmup")
+        self._warmup_thread.start()
+
+    def _warmup_bg(self) -> None:
+        """Background warmup — logs errors but never raises."""
+        try:
+            self._pool.warmup()
+            log.info("vm pool ready", pool_size=self._pool_size, snapshot=self._snapshot_name)
+        except Exception as exc:
+            log.error(
+                "vm pool warmup failed — pool empty until snapshot is available and service restarts",
+                err=str(exc),
+                snapshot=self._snapshot_name,
+                hint="upload snapshot via tools/snapshot-builder/ then restart platform-api",
+            )
 
     def acquire(self, timeout: float = 30.0):
         if getattr(self, "_sim_mode", False):
