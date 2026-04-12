@@ -419,6 +419,7 @@ def new_vm(snap: SnapshotPaths, cid: int, work_dir: str,
     api_sock = os.path.join(work_dir, f"fc-{vm_id}.sock")
     log_path = os.path.join(work_dir, f"fc-{vm_id}.log")
     Path(work_dir).mkdir(parents=True, exist_ok=True)
+    Path(log_path).touch()  # FC v1.7+ requires log file to exist before --log-path
     proc = subprocess.Popen(
         [firecracker_bin, "--api-sock", api_sock, "--log-path", log_path, "--level", "Error"],
         stdout=subprocess.DEVNULL,

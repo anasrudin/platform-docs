@@ -13,6 +13,7 @@ metadata() {
 apt-get update
 apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
 
+# ── Nomad ─────────────────────────────────────────────────────────────────────
 install -d -m 0755 /usr/share/keyrings
 curl -fsSL https://apt.releases.hashicorp.com/gpg \
   | gpg --dearmor --batch --yes -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
@@ -25,6 +26,24 @@ EOF
 apt-get update
 apt-get install -y nomad
 
+# ── Docker CE ─────────────────────────────────────────────────────────────────
+curl -fsSL https://download.docker.com/linux/debian/gpg \
+  | gpg --dearmor --batch --yes -o /usr/share/keyrings/docker-archive-keyring.gpg
+
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] \
+https://download.docker.com/linux/debian ${CODENAME} stable" \
+  > /etc/apt/sources.list.d/docker.list
+
+apt-get update
+apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+systemctl enable docker
+systemctl start docker
+
+# ── Python 3 + venv ───────────────────────────────────────────────────────────
+apt-get install -y python3 python3-venv python3-pip git
+
+# ── Nomad single-node config ──────────────────────────────────────────────────
 INTERNAL_IP="$(metadata instance/network-interfaces/0/ip)"
 
 mkdir -p /etc/nomad.d /opt/nomad/data
@@ -74,3 +93,6 @@ EOF
 chmod 0640 /etc/nomad.d/server.hcl
 systemctl enable nomad
 systemctl restart nomad
+
+# ── Mark bootstrap complete ───────────────────────────────────────────────────
+touch /var/lib/nomad-bootstrap-complete
