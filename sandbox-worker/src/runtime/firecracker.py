@@ -202,20 +202,38 @@ class GuestResponse:
     stderr: str
 
 
-def _dial_vsock(cid: int, port: int) -> socket.socket:
-    """Open a vsock connection. Only works on Linux with AF_VSOCK."""
-    try:
-        AF_VSOCK = socket.AF_VSOCK  # type: ignore[attr-defined]
-    except AttributeError as exc:
-        raise OSError("AF_VSOCK not available on this platform (not Linux)") from exc
-    sock = socket.socket(AF_VSOCK, socket.SOCK_STREAM)
-    sock.connect((cid, port))
+def _dial_vsock_uds(vsock_uds: str, port: int, timeout: float = 3.0) -> socket.socket:
+    """Connect to a Firecracker guest via the vsock UDS multiplexer.
+
+    Firecracker exposes host→guest vsock connections through a Unix Domain
+    Socket proxy (the `uds_path` configured when setting up the vsock device).
+    The protocol is:
+        1. Connect to the UDS socket.
+        2. Send ``CONNECT <guest_port>\\n``.
+        3. Wait for ``OK <host_port>\\n``.
+    After that the socket carries the guest connection on the chosen port.
+
+    Reference: https://github.com/firecracker-microvm/firecracker/blob/main/docs/vsock.md
+    """
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    sock.settimeout(timeout)
+    sock.connect(vsock_uds)
+    sock.sendall(f"CONNECT {port}\n".encode())
+    response = b""
+    while b"\n" not in response:
+        chunk = sock.recv(32)
+        if not chunk:
+            break
+        response += chunk
+    if not response.startswith(b"OK "):
+        sock.close()
+        raise OSError(f"FC vsock CONNECT refused: {response!r}")
     return sock
 
 
 class GuestClient:
-    def __init__(self, cid: int, tcp_addr: str = "", timeout: float = 30.0) -> None:
-        self._cid = cid
+    def __init__(self, vsock_uds: str = "", tcp_addr: str = "", timeout: float = 30.0) -> None:
+        self._vsock_uds = vsock_uds
         self._port = GUEST_AGENT_PORT
         self._tcp_addr = tcp_addr
         self._timeout = timeout
@@ -227,7 +245,10 @@ class GuestClient:
         try:
             conn.settimeout(self._timeout)
             conn.sendall(msg)
-            conn.shutdown(socket.SHUT_WR)
+            # Do NOT call shutdown(SHUT_WR): FC's vsock UDS proxy translates a
+            # host-side half-close into a full connection close, which causes the
+            # guest to see EOF before it can send the response.  Instead, wait
+            # for the guest to close the connection after sending its reply.
             raw = b""
             while chunk := conn.recv(4096):
                 raw += chunk
@@ -255,7 +276,9 @@ class GuestClient:
         if self._tcp_addr:
             host, port = self._tcp_addr.rsplit(":", 1)
             return socket.create_connection((host, int(port)), timeout=3.0)
-        return _dial_vsock(self._cid, self._port)
+        if not self._vsock_uds:
+            raise OSError("no vsock_uds path configured for GuestClient")
+        return _dial_vsock_uds(self._vsock_uds, self._port)
 
 
 # ── VM lifecycle ───────────────────────────────────────────────────────────────
@@ -302,32 +325,62 @@ class FirecrackerVM:
                 pass
         log.debug("vm destroyed", id=self.id)
 
-    def _api_call(self, method: str, path: str, body: dict) -> None:
+    def _api_call(self, method: str, path: str, body: dict, timeout: float = 30.0) -> None:
         data = json.dumps(body).encode()
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
-            sock.settimeout(10.0)
+            sock.settimeout(timeout)
             sock.connect(self._api_sock)
             request = (
-                f"{method} {path} HTTP/1.0\r\n"
+                f"{method} {path} HTTP/1.1\r\n"
+                f"Host: localhost\r\n"
                 f"Content-Type: application/json\r\n"
-                f"Content-Length: {len(data)}\r\n\r\n"
+                f"Content-Length: {len(data)}\r\n"
+                f"Connection: close\r\n\r\n"
             ).encode() + data
             sock.sendall(request)
-            response = b""
-            while chunk := sock.recv(4096):
-                response += chunk
-        status_line = response.split(b"\r\n", 1)[0]
+
+            # Read response headers first (delimited by \r\n\r\n).
+            # Firecracker (micro_http) sends a response and may not close the
+            # connection immediately on HTTP/1.0.  Waiting for EOF causes an
+            # indefinite hang.  Instead, parse Content-Length and read exactly
+            # the stated number of body bytes before closing.
+            raw = b""
+            while b"\r\n\r\n" not in raw:
+                chunk = sock.recv(4096)
+                if not chunk:
+                    break
+                raw += chunk
+
+            header_part, _, body_part = raw.partition(b"\r\n\r\n")
+            headers_text = header_part.decode(errors="replace")
+
+            content_length = 0
+            for line in headers_text.split("\r\n")[1:]:
+                if line.lower().startswith("content-length:"):
+                    try:
+                        content_length = int(line.split(":", 1)[1].strip())
+                    except ValueError:
+                        pass
+                    break
+
+            while len(body_part) < content_length:
+                chunk = sock.recv(min(4096, content_length - len(body_part)))
+                if not chunk:
+                    break
+                body_part += chunk
+
+        status_line = header_part.split(b"\r\n", 1)[0]
         parts = status_line.split(b" ", 2)
         if len(parts) >= 2:
             code = int(parts[1])
             if code >= 300:
                 raise RuntimeError(f"FC API {method} {path}: HTTP {code}")
 
-    def _api_put(self, path: str, body: dict) -> None:
-        self._api_call("PUT", path, body)
+    def _api_put(self, path: str, body: dict, timeout: float = 30.0) -> None:
+        self._api_call("PUT", path, body, timeout=timeout)
 
-    def _api_patch(self, path: str, body: dict) -> None:
-        self._api_call("PATCH", path, body)
+    def _api_patch(self, path: str, body: dict, timeout: float = 30.0) -> None:
+        self._api_call("PATCH", path, body, timeout=timeout)
 
     def _wait_for_socket(self, timeout: float = 3.0) -> None:
         deadline = time.monotonic() + timeout
@@ -337,20 +390,26 @@ class FirecrackerVM:
             time.sleep(0.05)
         raise TimeoutError(f"FC socket {self._api_sock} not ready after {timeout}s")
 
+    # Vsock UDS path baked into the snapshot by fc-snapshot.sh.
+    # Must be cleaned up before each restore (Firecracker binds it fresh).
+    VSOCK_UDS = "/tmp/vsock.sock"
+
     def _restore(self, snap: SnapshotPaths, cid: int) -> None:
+        # Remove stale vsock UDS socket so Firecracker can bind it fresh.
+        # The snapshot builder uses a fixed path (/tmp/vsock.sock) for CID 3.
         try:
-            self._api_put("/vsock", {
-                "guest_cid": cid,
-                "uds_path": f"/tmp/fc-vsock-{self.id}.sock",
-            })
-        except Exception as exc:
-            log.warning("vsock setup failed (non-fatal in dev mode)", err=str(exc))
+            os.unlink(self.VSOCK_UDS)
+        except FileNotFoundError:
+            pass
+
+        # /snapshot/load maps the memory file into Firecracker's address space;
+        # on nested-virt hosts with large memory images (≥512 MiB) this can
+        # take several minutes — give it a generous timeout.
         self._api_put("/snapshot/load", {
             "snapshot_path": snap.state_file,
             "mem_file_path": snap.mem_file,
-            "backend_type": "File",
             "enable_diff_snapshots": False,
-        })
+        }, timeout=600.0)
 
 
 def new_vm(snap: SnapshotPaths, cid: int, work_dir: str,
@@ -366,7 +425,7 @@ def new_vm(snap: SnapshotPaths, cid: int, work_dir: str,
         stderr=subprocess.DEVNULL,
     )
     guest_addr = f"127.0.0.1:{8080}" if dev_mode else ""
-    guest = GuestClient(cid=cid, tcp_addr=guest_addr)
+    guest = GuestClient(vsock_uds=FirecrackerVM.VSOCK_UDS, tcp_addr=guest_addr)
     vm = FirecrackerVM(
         vm_id=vm_id, cid=cid, api_sock=api_sock, log_path=log_path,
         snap=snap, process=proc, guest=guest,
@@ -374,7 +433,7 @@ def new_vm(snap: SnapshotPaths, cid: int, work_dir: str,
     vm._wait_for_socket(timeout=3.0)
     vm._restore(snap, cid)
     vm._api_patch("/vm", {"state": "Resumed"})
-    guest.wait_ready(timeout=15.0)
+    guest.wait_ready(timeout=120.0)
     log.info("vm ready", id=vm_id, cid=cid, pid=proc.pid)
     return vm
 
@@ -417,7 +476,11 @@ class VMPool:
         threads = [threading.Thread(target=boot_one, daemon=True) for _ in range(self._pool_size)]
         for t in threads:
             t.start()
-        first_ready.wait(timeout=60)
+        # Must exceed the /snapshot/load API call timeout (600 s) so that
+        # a slow nested-virt restore can finish before warmup gives up.
+        ready = first_ready.wait(timeout=700)
+        if not ready and self._ready.empty():
+            raise TimeoutError("VM pool warmup timed out before any VM became ready")
         if errors and self._ready.empty():
             raise errors[0]
 
@@ -583,5 +646,5 @@ class Runtime:
 __all__ = [
     "Config", "Runtime", "detect_mode", "make_mac_address", "make_tap_name",
     "FirecrackerVM", "VMPool", "VMState", "SnapshotStore", "SnapshotPaths",
-    "GuestClient", "GuestResponse", "_dial_vsock",
+    "GuestClient", "GuestResponse", "_dial_vsock_uds",
 ]

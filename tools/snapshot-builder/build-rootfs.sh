@@ -187,6 +187,36 @@ AGENTEOF
 
 chmod +x "$ROOTFS_DIR/opt/agent/agent.py"
 
+# Ensure `/usr/bin/env python3` resolves inside the guest.
+# The exported Python image keeps the interpreter under /usr/local/bin,
+# which is not always on the init PATH.
+PYTHON_TARGET=""
+for candidate in \
+  "$ROOTFS_DIR/usr/local/bin/python3" \
+  "$ROOTFS_DIR/usr/local/bin/python3.11" \
+  "$ROOTFS_DIR/usr/local/bin/python" \
+  "$ROOTFS_DIR/usr/bin/python3" \
+  "$ROOTFS_DIR/usr/bin/python3.11" \
+  "$ROOTFS_DIR/usr/bin/python"; do
+  if [[ -x "$candidate" ]]; then
+    PYTHON_TARGET="${candidate#${ROOTFS_DIR}}"
+    break
+  fi
+done
+
+if [[ -z "$PYTHON_TARGET" ]]; then
+  echo "ERROR: python interpreter not found in exported rootfs" >&2
+  exit 1
+fi
+
+if [[ "$PYTHON_TARGET" != "/usr/bin/python3" ]]; then
+  mkdir -p "$ROOTFS_DIR/usr/bin"
+  ln -sf "$PYTHON_TARGET" "$ROOTFS_DIR/usr/bin/python3"
+  if [[ "$PYTHON_TARGET" != "/usr/bin/python" ]]; then
+    ln -sf "$PYTHON_TARGET" "$ROOTFS_DIR/usr/bin/python"
+  fi
+fi
+
 # Init script that runs agent on boot
 mkdir -p "$ROOTFS_DIR/etc/init.d"
 cat > "$ROOTFS_DIR/etc/init.d/agent" << 'INITEOF'
