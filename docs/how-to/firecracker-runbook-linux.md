@@ -667,104 +667,354 @@ curl -s -X POST http://localhost:8080/execute \
 
 ---
 
-## 8. Deploy to GCP Nomad (remote production-like setup)
+## 8. Deploy to GCP Nomad — full stack
 
-For running on a remote GCP VM with Nomad rather than a local dev cluster, use the deploy script:
+This section covers deploying the **complete platform stack** on the GCP Nomad VM:
+MinIO + PostgreSQL + Redis + Consul + Jaeger + platform-api, with all env vars wired
+so traces appear in Jaeger and sessions are registered in Consul.
 
-```bash
-tools/runbook/gcp-jumphost-nomad/gcloud/deploy-platform-api.sh
-```
-
-**Prerequisites on the GCP VM:**
+### 8a. Prerequisites on the GCP VM
 
 - Firecracker v1.15.1 at `/usr/bin/firecracker`
-- MinIO running at `127.0.0.1:9000` with bucket `platform-snapshots`
-- Python venv at `~/fc-agent-venv` with `sandbox-worker` deps installed
+- Docker + Docker Compose v2 installed
+- Python venv at `~/fc-agent-venv` with `sandbox-worker` deps installed (including `opentelemetry-sdk`)
 - Nested virtualization enabled (`enableNestedVirtualization=true`, `n2-standard-4`, Intel Cascade Lake)
 - `/dev/kvm` accessible (`crw-rw-rw-`)
+- `platform-snapshots/python-v1` snapshot already in MinIO (see section 4–5)
 
-**Build and upload the snapshot on the GCP VM (first time only):**
-
-```bash
-# SSH into Nomad VM
-gcloud compute ssh nomad --project=<project> --zone=<zone>
-
-# Download kernel
-sudo curl -fL -o /opt/platform/test-assets/vmlinux-5.10 \
-  "https://s3.amazonaws.com/spec.ccfc.min/firecracker-ci/v1.15/x86_64/vmlinux-5.10.245"
-
-# Build rootfs (requires Docker)
-sudo bash ~/platform-docs-runtime/tools/snapshot-builder/build-rootfs.sh \
-  --name python-v1 --out /var/sandbox/cache/python-v1.ext4
-
-# Build snapshot (takes 30-60s; the vsock WARNING at end is expected)
-sudo bash /tmp/fc-snapshot.sh \
-  --kernel /opt/platform/test-assets/vmlinux-5.10 \
-  --rootfs /var/sandbox/cache/python-v1.ext4 \
-  --name python-v1 --out-dir /var/sandbox/snapshots
-
-# Upload to MinIO
-mc alias set local http://127.0.0.1:9000 minioadmin minioadmin
-mc cp /var/sandbox/snapshots/python-v1/state  local/platform-snapshots/python-v1/vmstate.bin
-mc cp /var/sandbox/snapshots/python-v1/mem    local/platform-snapshots/python-v1/memory.bin
-mc cp /var/sandbox/snapshots/python-v1/meta.json local/platform-snapshots/python-v1/meta.json
-```
-
-**Deploy platform-api:**
+**Install opentelemetry packages in the venv (required for Jaeger traces):**
 
 ```bash
-# From your laptop:
-SNAPSHOT_NAME=python-v1 \
-  bash tools/runbook/gcp-jumphost-nomad/gcloud/deploy-platform-api.sh
+# SSH into the Nomad VM first
+gcloud compute ssh nomad --project=e2b-infra-489707 --zone=asia-southeast1-a
+
+~/fc-agent-venv/bin/pip install \
+  opentelemetry-api \
+  opentelemetry-sdk \
+  'opentelemetry-exporter-otlp-proto-grpc>=1.20'
 ```
 
-The script syncs `sandbox-worker/src` to the VM, submits a Nomad job with `FC_MODE=real`, and runs a smoke test. On success you will see:
-
-```
-session: <uuid>
-{"job_id": "...", "status": "completed", "output": "{\"stdout\": \"hello from real VM\\n\", ...}"}
-```
-
-**Hit from your laptop:**
+**Install Docker Compose v2 plugin if missing:**
 
 ```bash
-# Health
-curl http://<VM_PUBLIC_IP>:8080/health
-
-# Execute
-SESSION=$(curl -sS -X POST http://<VM_PUBLIC_IP>:8080/sessions \
-  -H "Content-Type: application/json" -d '{"runtime":"microvm"}' \
-  | python3 -c "import json,sys; print(json.load(sys.stdin)['session_id'])")
-
-curl -sS -X POST http://<VM_PUBLIC_IP>:8080/execute \
-  -H "Content-Type: application/json" \
-  -d "{\"session_id\":\"$SESSION\",\"tool\":\"python_run\",\"input\":{\"code\":\"print('hello from GCP Firecracker')\"}}"
+mkdir -p ~/.docker/cli-plugins
+curl -fsSL https://github.com/docker/compose/releases/download/v2.24.6/docker-compose-linux-x86_64 \
+  -o ~/.docker/cli-plugins/docker-compose
+chmod +x ~/.docker/cli-plugins/docker-compose
+docker compose version   # must print v2.x
 ```
 
-> **Orphan process cleanup:** If platform-api is redeployed, run `sudo pkill -x firecracker` on the VM first. Nomad's `raw_exec` driver does not kill child processes spawned by the task.
+### 8b. Deploy the full stack (one command)
+
+From your **laptop**, run from the repo root:
+
+```bash
+bash tools/runbook/gcp-jumphost-nomad/gcloud/deploy-full-stack.sh
+```
+
+This script does 4 steps automatically:
+
+1. **Syncs `services/`** (docker-compose files for MinIO, PostgreSQL, Redis, Consul, Jaeger) to the VM
+2. **Starts all containers** with `docker compose up -d` and waits for healthy status
+3. **Opens GCP firewall ports** scoped to your current public IP:
+   - `4646` Nomad UI
+   - `8500` Consul UI
+   - `9001` MinIO console
+   - `16686` Jaeger UI
+   - `4317/4318` OTEL collector
+   - `8080` platform-api
+4. **Redeploys platform-api** via Nomad with full env wiring:
+
+   | Env var | Value |
+   |---------|-------|
+   | `FC_MODE` | `real` |
+   | `OTEL_ENABLED` | `true` |
+   | `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://127.0.0.1:4317` |
+   | `CONSUL_ENABLED` | `true` |
+   | `DATABASE_URL` | `postgresql://postgres:postgres@127.0.0.1:5432/platform` |
+   | `REDIS_URL` | `redis://127.0.0.1:6379/0` |
+   | `MINIO_ENDPOINT` | `http://127.0.0.1:9000` |
+   | `SNAPSHOT_NAME` | `python-v1` |
+
+Skip flags are available:
+
+```bash
+# Skip rsync if services/ hasn't changed:
+bash deploy-full-stack.sh --skip-sync
+
+# Skip firewall update (if ports already open):
+bash deploy-full-stack.sh --skip-firewall
+
+# Skip Nomad redeploy (containers only):
+bash deploy-full-stack.sh --skip-nomad
+
+# Override auto-detected public IP:
+bash deploy-full-stack.sh --my-ip=203.0.113.1
+```
+
+### 8c. Verify all components
+
+After deploy completes, run the smoke test:
+
+```bash
+bash tools/runbook/gcp-jumphost-nomad/smoke-test.sh http://34.143.174.106:8080
+```
+
+Expected output — all 5 checks pass:
+
+```
+[1/5] API health check...      [OK] API is up
+[2/5] Create session...        [OK] Session created
+[3/5] Execute Python in VM...  [OK] Code ran in Firecracker VM
+[4/5] Consul status...         [OK] Consul leader: "127.0.0.1:8300"
+[5/5] Jaeger status...         [OK] Jaeger UI is reachable
+```
+
+Dashboard URLs (replace `34.143.174.106` with your VM's external IP):
+
+| Dashboard | URL |
+|-----------|-----|
+| Nomad     | http://34.143.174.106:4646 |
+| Consul    | http://34.143.174.106:8500/ui |
+| Jaeger    | http://34.143.174.106:16686 |
+| MinIO     | http://34.143.174.106:9001 (minioadmin / minioadmin) |
+| API       | http://34.143.174.106:8080/health |
+
+### 8d. GCP firewall — common issue
+
+The firewall rule must be created in the **same VPC as the VM** (`jump-nomad-vpc`), not the `default` network. The deploy script handles this automatically. If you create the rule manually:
+
+```bash
+gcloud compute firewall-rules create platform-dev-access \
+  --project=e2b-infra-489707 \
+  --network=jump-nomad-vpc \          # <-- not "default"
+  --rules="tcp:8500,tcp:9001,tcp:16686,tcp:4317,tcp:4318" \
+  --source-ranges="$(curl -s checkip.amazonaws.com)/32" \
+  --target-tags=nomad
+```
+
+### 8e. Cleanup
+
+From your **laptop**:
+
+```bash
+# Stop the Nomad job and kill orphan Firecracker processes:
+bash tools/runbook/gcp-jumphost-nomad/gcloud/cleanup.sh
+
+# Also remove snapshot from MinIO and clear local cache:
+bash tools/runbook/gcp-jumphost-nomad/gcloud/cleanup.sh --full
+
+# Stop all docker containers (runs on the VM):
+gcloud compute ssh nomad --project=e2b-infra-489707 --zone=asia-southeast1-a \
+  --command="cd ~/platform-docs/services && docker compose down"
+```
+
+> **Orphan process cleanup:** Nomad's `raw_exec` driver does not kill Firecracker child processes when the task stops. Always run `cleanup.sh` before redeploying — or the deploy script runs `pkill -x firecracker` automatically.
 
 ---
 
-## 9. Cleanup
+## 9. Trace the full workflow with logs
 
-Stop Nomad jobs:
+With the full stack deployed (section 8), you can observe every layer of a request.
+
+### 9a. Watch platform-api logs live
 
 ```bash
+gcloud compute ssh nomad --project=e2b-infra-489707 --zone=asia-southeast1-a \
+  --command="
+ALLOC=\$(NOMAD_ADDR=http://127.0.0.1:4646 nomad job allocs platform-api \
+  | awk 'NR==2{print \$1}')
+echo \"alloc: \$ALLOC\"
+NOMAD_ADDR=http://127.0.0.1:4646 nomad alloc logs -f \$ALLOC platform-api
+"
+```
+
+Each `POST /execute` emits structured log lines like:
+
+```
+10:41:05 [info]  http.request  method=POST  path=/execute  req_id=abc123
+10:41:05 [info]  pool.acquire  session_id=f5b35b6a  snapshot=python-v1
+10:41:05 [info]  communication.vsock.execute  tool=python_run  duration_ms=212
+10:41:05 [info]  service.execution.run  status=completed  duration_ms=215
+10:41:05 [info]  http.request  status=200  duration_ms=216
+```
+
+### 9b. Watch stderr (errors and tracebacks)
+
+```bash
+gcloud compute ssh nomad --project=e2b-infra-489707 --zone=asia-southeast1-a \
+  --command="
+ALLOC=\$(NOMAD_ADDR=http://127.0.0.1:4646 nomad job allocs platform-api \
+  | awk 'NR==2{print \$1}')
+NOMAD_ADDR=http://127.0.0.1:4646 nomad alloc logs -stderr -f \$ALLOC platform-api
+"
+```
+
+### 9c. Watch Docker service logs
+
+```bash
+gcloud compute ssh nomad --project=e2b-infra-489707 --zone=asia-southeast1-a \
+  --command="cd ~/platform-docs/services && docker compose logs -f --tail=50"
+```
+
+Per service:
+
+```bash
+# Consul registrations and health checks:
+docker compose logs -f consul
+
+# Jaeger — span ingestion (OTLP):
+docker compose logs -f jaeger
+
+# PostgreSQL — queries:
+docker compose logs -f postgres
+
+# Redis:
+docker compose logs -f redis
+```
+
+### 9d. Trace in Jaeger UI
+
+Open http://34.143.174.106:16686, then:
+
+1. **Service** → `sandbox-platform-worker`
+2. **Operation** → leave blank (all) or pick one:
+   - `http.request` — outermost HTTP span
+   - `service.execution.run` — tool dispatch
+   - `pool.acquire` — FC pool checkout
+   - `communication.vsock.execute` — vsock round-trip into guest VM
+3. Click **Find Traces**
+4. Click a trace to see the full span tree
+
+The span hierarchy for a `POST /execute` call:
+
+```
+http.request  [POST /execute]                ~216ms
+  └── service.execution.run                  ~215ms
+        └── pool.acquire                       ~2ms
+              └── communication.vsock.execute  ~212ms
+```
+
+The `communication.vsock.execute` span shows exact time spent inside the Firecracker VM. Attributes include `tool`, `session_id`.
+
+### 9e. Check Consul service registration
+
+```bash
+curl -s http://34.143.174.106:8500/v1/catalog/service/sandbox-worker | python3 -m json.tool
+```
+
+Expected: one entry with `Address` pointing to the VM's internal IP and `Port: 8080`.
+
+Or open the Consul UI: http://34.143.174.106:8500/ui → Services → `sandbox-worker`.
+
+### 9f. Check Nomad allocation health
+
+```bash
+# From laptop:
+curl -s http://34.143.174.106:4646/v1/job/platform-api/allocations | python3 -m json.tool
+
+# Or from inside the VM:
+gcloud compute ssh nomad --project=e2b-infra-489707 --zone=asia-southeast1-a \
+  --command="NOMAD_ADDR=http://127.0.0.1:4646 nomad job status platform-api"
+```
+
+### 9g. Check Firecracker process logs
+
+```bash
+gcloud compute ssh nomad --project=e2b-infra-489707 --zone=asia-southeast1-a \
+  --command="
+# Find the FC log for the running VM
+ls /tmp/platform-snapshots/vms/
+FC_LOG=\$(ls /tmp/platform-snapshots/vms/*/fc-*.log 2>/dev/null | head -1)
+echo \"FC log: \$FC_LOG\"
+tail -20 \"\$FC_LOG\"
+"
+```
+
+Firecracker logs show vsock connection events and memory restore activity:
+
+```
+[INFO]  Firecracker v1.15.1
+[INFO]  Starting microVM
+[INFO]  Restored from snapshot
+```
+
+### 9h. Full workflow trace (all at once)
+
+Run this from the VM to tail all relevant logs simultaneously in separate windows, or use `tmux`:
+
+```bash
+gcloud compute ssh nomad --project=e2b-infra-489707 --zone=asia-southeast1-a \
+  --command="
+# Get alloc ID
+ALLOC=\$(NOMAD_ADDR=http://127.0.0.1:4646 nomad job allocs platform-api \
+  | awk 'NR==2{print \$1}')
+
+echo '=== Platform-API stdout logs ==='
+NOMAD_ADDR=http://127.0.0.1:4646 nomad alloc logs \$ALLOC platform-api | tail -20
+
+echo ''
+echo '=== Docker container status ==='
+cd ~/platform-docs/services && docker compose ps
+
+echo ''
+echo '=== Consul service health ==='
+curl -s http://127.0.0.1:8500/v1/health/service/sandbox-worker | python3 -m json.tool
+
+echo ''
+echo '=== Active Firecracker processes ==='
+ps aux | grep firecracker | grep -v grep
+"
+```
+
+Then from your **laptop**, trigger a request and watch the logs:
+
+```bash
+API=http://34.143.174.106:8080
+
+SESSION=$(curl -sS -X POST $API/sessions \
+  -H "Content-Type: application/json" \
+  -d '{"runtime":"microvm"}' \
+  | python3 -c "import json,sys; print(json.load(sys.stdin)['session_id'])")
+
+curl -sS -X POST $API/execute \
+  -H "Content-Type: application/json" \
+  -d "{\"session_id\":\"$SESSION\",\"tool\":\"python_run\",\"input\":{\"code\":\"import socket; print(socket.gethostname()); print(2**20)\"}}" \
+  | python3 -m json.tool
+```
+
+Open Jaeger at http://34.143.174.106:16686 and find the trace for this request.
+
+---
+
+## 10. Cleanup
+
+**Local dev:**
+
+```bash
+# Stop Nomad jobs
 nomad job stop -purge platform-api 2>/dev/null || true
 nomad job stop -purge sandbox-worker-linux 2>/dev/null || true
-```
 
-Stop `platform-api` (Ctrl+C in its terminal, or):
-
-```bash
+# Stop platform-api
 pkill -f "platform-api"
+
+# Stop infrastructure
+cd services && docker compose down
 ```
 
-Stop infrastructure:
+**GCP:**
 
 ```bash
-cd services
-docker compose down
+# Stop job + kill FC orphans
+bash tools/runbook/gcp-jumphost-nomad/gcloud/cleanup.sh
+
+# Also remove MinIO snapshot and local cache
+bash tools/runbook/gcp-jumphost-nomad/gcloud/cleanup.sh --full
+
+# Stop docker containers on VM
+gcloud compute ssh nomad --project=e2b-infra-489707 --zone=asia-southeast1-a \
+  --command="cd ~/platform-docs/services && docker compose down"
 ```
 
 Stop the Nomad dev agent (Ctrl+C in its terminal, or):
