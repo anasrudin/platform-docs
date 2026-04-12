@@ -1,0 +1,12 @@
+# topology.env berisi IP spesifik per komputer — jangan di-commit
+config/topology.env
+
+# Terraform state dan credentials
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/terraform.auto.tfvars
+
+# Generated files
+config/*.generated.env
