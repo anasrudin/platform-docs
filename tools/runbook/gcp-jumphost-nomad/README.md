@@ -29,7 +29,10 @@ Ada dua jalur yang setara:
 - `gcloud/run-terraform-on-jumphost.sh`: sync runbook lalu jalankan Terraform di jumphost
 - `gcloud/import-existing-state.sh`: import resource yang sudah dibuat gcloud ke state Terraform
 - `gcloud/apply-from-jumphost.sh`: sync, import, lalu `terraform apply` dari jumphost
-- `gcloud/deploy-platform-api.sh`: deploy platform-api real mode ke Nomad
+- `gcloud/deploy-platform-api.sh`: deploy platform-api saja ke Nomad (tanpa full stack)
+- `gcloud/deploy-full-stack.sh`: deploy **seluruh stack** — sync services/, start docker compose (MinIO/Postgres/Redis/Consul/Jaeger), buka firewall, deploy platform-api dengan env lengkap (OTEL + Consul + DB + Redis)
+- `gcloud/cleanup.sh`: stop Nomad job, kill FC orphan, opsional hapus snapshot MinIO
+- `smoke-test.sh`: end-to-end test — health + session + execute Python di VM nyata + cek Consul + cek Jaeger
 - `startup/jumphost-startup.sh`: bootstrap ringan untuk jumphost
 - `startup/nomad-startup.sh`: install dan start single-node Nomad
 - `terraform/`: versi Terraform dari topologi yang sama
@@ -56,6 +59,30 @@ Kalau belum tahu IP publik Anda:
 ```bash
 curl -4 ifconfig.me
 ```
+
+## Quick Start: Full Stack Deploy (platform-api + seluruh infrastruktur)
+
+Asumsi VM GCP Nomad sudah ada dan snapshot `python-v1` sudah ada di MinIO:
+
+```bash
+# Deploy semua sekaligus dari laptop (sync services/, start docker, buka firewall, deploy Nomad job)
+bash tools/runbook/gcp-jumphost-nomad/gcloud/deploy-full-stack.sh
+
+# Verifikasi semua komponen
+bash tools/runbook/gcp-jumphost-nomad/smoke-test.sh http://34.143.174.106:8080
+```
+
+Dashboard setelah deploy:
+
+| Dashboard | URL |
+|-----------|-----|
+| Nomad     | http://34.143.174.106:4646 |
+| Consul    | http://34.143.174.106:8500/ui |
+| Jaeger    | http://34.143.174.106:16686 |
+| MinIO     | http://34.143.174.106:9001 |
+| API       | http://34.143.174.106:8080/health |
+
+Untuk melihat log dan trace workflow lengkap, lihat [firecracker-runbook-linux.md](../../../docs/how-to/firecracker-runbook-linux.md) section 9.
 
 ## Quick Start: Terraform
 
