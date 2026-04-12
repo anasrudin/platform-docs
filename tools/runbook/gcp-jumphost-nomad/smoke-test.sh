@@ -11,8 +11,10 @@
 set -euo pipefail
 
 API="${1:-http://34.143.174.106:8080}"
-VM_HOST="${API%%:*}"
-VM_HOST="${VM_HOST#http://}"
+# Extract host from URL: strip scheme then strip :port
+_no_scheme="${API#http://}"
+_no_scheme="${_no_scheme#https://}"
+VM_HOST="${_no_scheme%%:*}"
 
 CONSUL_URL="http://${VM_HOST}:8500"
 JAEGER_URL="http://${VM_HOST}:16686"

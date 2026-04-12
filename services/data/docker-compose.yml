@@ -52,6 +52,8 @@ services:
 
 volumes:
   minio_data:
+    name: data_minio_data    # reuse existing volume so snapshot data is preserved
+    external: true
   postgres_data:
 
 networks:
