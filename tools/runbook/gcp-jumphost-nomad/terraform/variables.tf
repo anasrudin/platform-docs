@@ -112,3 +112,31 @@ variable "service_account_roles" {
     "roles/compute.viewer",
   ]
 }
+
+# ── Layer topology ────────────────────────────────────────────────────────────
+# Untuk sekarang semua layer di 1 VM (nomad). Variabel ini menyiapkan
+# pondasi agar mudah dipisah ke VM berbeda di masa depan.
+
+variable "controller_layer_name" {
+  description = "Nama logis layer controller (Nomad, Consul, platform-api)."
+  type        = string
+  default     = "controller"
+}
+
+variable "worker_layer_name" {
+  description = "Nama logis layer worker (Firecracker agents)."
+  type        = string
+  default     = "worker"
+}
+
+variable "data_layer_name" {
+  description = "Nama logis layer data (PostgreSQL, Redis, MinIO, Jaeger)."
+  type        = string
+  default     = "data"
+}
+
+variable "expose_nomad_public_ip" {
+  description = "Beri public IP ke Nomad VM (enable access_config). Aktifkan untuk akses langsung tanpa tunnel."
+  type        = bool
+  default     = false
+}
