@@ -183,7 +183,7 @@ Expected:
 
 > The `pool_size` value reflects `FC_POOL_SIZE` (default: `2`).
 >
-> **Real-mode note:** `platform-api` now wires a snapshot BlobStore into `VMLifecycleManager`, so real-mode startup depends on a reachable MinIO endpoint and a valid `platform-snapshots/python-v1` snapshot. If MinIO or the snapshot is missing, startup will fail instead of silently falling back to sim mode. Use the cached snapshot or fix MinIO before starting `platform-api`.
+> **Real-mode note:** `platform-api` wires a `SnapshotBlobStore` into `VMLifecycleManager` (`api/app.py`), so real-mode startup requires a reachable MinIO endpoint and a valid `platform-snapshots/python-v1` snapshot. If MinIO or the snapshot is missing, startup fails rather than silently falling back to sim mode. Use `FC_MODE=sim` for local dev without a snapshot, or build and upload a snapshot first (section 4).
 
 Troubleshoot: if MinIO is unreachable, confirm Docker is running and `docker compose ps` from `services/` shows port `9000->9000`.
 
@@ -580,7 +580,10 @@ Troubleshoot: if `raw_exec` is disabled, it is enabled by default in `-dev` mode
 
 ## 7. Run Python code end-to-end
 
-> **Note:** `platform-api` runs its own in-process VM lifecycle manager. It does not route requests through the Nomad-deployed fc-agent at runtime. For end-to-end real-mode execution via `POST /execute`, ensure the VM pool warmup completes successfully (check logs after startup) — it requires a valid snapshot in MinIO and the Firecracker binary at `FC_BINARY_PATH` (default `/usr/bin/firecracker`).
+> **Note:** `platform-api` runs its own in-process VM lifecycle manager. It does not route requests through the Nomad-deployed fc-agent at runtime. For end-to-end real-mode execution via `POST /execute`, ensure the VM pool warmup completes successfully (check logs after startup) — it requires:
+> 1. A valid snapshot in MinIO with the name matching `FC_SNAPSHOT_BUCKET` (see 7a).
+> 2. The Firecracker binary at `FC_BINARY_PATH` (default `/usr/bin/firecracker`).
+> 3. **A guest agent pre-installed inside the VM snapshot.** `platform-api` communicates with the VM over vsock port 8080 using `GuestClient` (`runtime/firecracker.py`). The rootfs in your snapshot must have a guest agent process listening on that port that accepts `POST /execute` with a JSON body `{"tool": "...", "input": {...}}` and responds with `{"exit_code": 0, "stdout": "...", "stderr": "..."}`. Without this, `GuestClient.wait_ready()` times out after 15 seconds and execution fails. The guest agent binary and its init configuration must be baked into the rootfs before creating the snapshot.
 
 **7a. Ensure platform-api is running**
 
@@ -590,13 +593,14 @@ From section 3, `platform-api` should be running with `FC_MODE=real`. If not, re
 cd sandbox-worker
 source .venv/bin/activate
 FC_MODE=real \
+  FC_SNAPSHOT_BUCKET=python-v1 \
   MINIO_ENDPOINT=http://localhost:9000 \
   MINIO_ACCESS_KEY=minioadmin \
   MINIO_SECRET_KEY=minioadmin \
   platform-api
 ```
 
-> `SNAPSHOT_NAME` now matters for `platform-api` too and should match the snapshot prefix stored in MinIO. `FC_SNAPSHOT_BUCKET` still controls the bucket name (default: `platform-snapshots`).
+> `SNAPSHOT_NAME` controls which snapshot is loaded from MinIO and must match the prefix uploaded in section 5 (e.g. `python-v1`). `FC_SNAPSHOT_BUCKET` controls the MinIO bucket name (default: `platform-snapshots`).
 
 **7b. Create a session**
 
