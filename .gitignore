@@ -4,6 +4,7 @@
 sandbox-platform/bin/*
 !sandbox-platform/bin/.gitkeep
 ccu/
+iac/
 
 # Python
 .venv/

@@ -11,6 +11,7 @@ Structure:
 """
 from __future__ import annotations
 
+import os
 import logging
 import tempfile
 from contextlib import asynccontextmanager
@@ -25,6 +26,7 @@ from adapters.registry.consul import ConsulClient
 from adapters.registry.health_server import start_health_server
 from adapters.storage.s3_compat import Config as ArtifactConfig, Store as ArtifactStore, mc_available
 from adapters.storage.local import PackageStore, LocalStorage
+from adapters.storage.snapshot_blob import SnapshotBlobStore
 from api.middleware.auth import TenantAuthMiddleware, auth_config_from_env
 from api.middleware.request_id import RequestIDMiddleware
 from api.middleware.tracing import TracingMiddleware
@@ -69,6 +71,7 @@ _state: dict = {}
 async def lifespan(app: FastAPI):
     cfg = settings
     _configure_logging(cfg.api.dev_mode)
+    snapshot_name = os.environ.get("SNAPSHOT_NAME", "python-v1")
 
     # Tracing
     init_tracer(
@@ -78,9 +81,21 @@ async def lifespan(app: FastAPI):
     )
 
     # VM lifecycle — local Firecracker pool on this node
+    snapshot_store = SnapshotBlobStore(
+        endpoint=cfg.storage.endpoint,
+        access_key=cfg.storage.access_key,
+        secret_key=cfg.storage.secret_key,
+        bucket=cfg.firecracker.snapshot_bucket,
+        local_dir=cfg.storage.local_dir,
+    )
+    try:
+        snapshot_store.ensure_bucket()
+    except Exception as exc:
+        log.warning("snapshot bucket init skipped", err=str(exc))
+
     lifecycle_mgr = VMLifecycleManager(
-        storage=None,  # snapshot storage wired below
-        snapshot_name=cfg.firecracker.snapshot_bucket,
+        storage=snapshot_store,
+        snapshot_name=snapshot_name,
         pool_size=cfg.firecracker.pool_size,
         firecracker_bin=cfg.firecracker.binary_path,
         dev_mode=cfg.firecracker.dev_mode,

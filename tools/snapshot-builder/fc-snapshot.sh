@@ -124,7 +124,7 @@ mkdir -p "$SNAP_DIR"
 
 # ── Step 2: Start Firecracker ─────────────────────────────────────────────────
 echo "[2/6] Starting Firecracker..."
-"$FC_BIN" --api-sock "$FC_SOCKET" --log-level Error &
+"$FC_BIN" --api-sock "$FC_SOCKET" --level Error &
 FC_PID=$!
 
 # Wait for socket to appear (up to 3s).
@@ -146,7 +146,7 @@ echo "[3/6] Configuring VM..."
 # Boot source
 fc_api PUT /boot-source "{
   \"kernel_image_path\": \"$KERNEL_PATH\",
-  \"boot_args\": \"console=ttyS0 reboot=k panic=1 pci=off\"
+  \"boot_args\": \"console=ttyS0 reboot=k panic=1 pci=off init=/opt/agent/agent.py\"
 }" > /dev/null
 
 # Root drive
@@ -164,15 +164,28 @@ fc_api PUT /machine-config "{
   \"smt\": false
 }" > /dev/null
 
+# vsock — required for host-to-guest AF_VSOCK communication.
+# CID 3 is used for the first VM; a fixed UDS path is OK because only
+# one Firecracker instance runs during snapshot creation.
+VSOCK_UDS="/tmp/vsock.sock"
+# Remove stale socket from a previous build/restore before binding.
+rm -f "$VSOCK_UDS" 2>/dev/null || true
+fc_api PUT /vsock "{
+  \"guest_cid\": 3,
+  \"uds_path\": \"$VSOCK_UDS\"
+}" > /dev/null
+echo "  vsock configured (CID=3, uds=$VSOCK_UDS)"
+
 echo "  VM configured"
 
 # ── Step 4: Boot the VM ────────────────────────────────────────────────────────
-echo "[4/6] Booting VM (this may take 10-30 seconds)..."
+echo "[4/6] Booting VM (this may take 30-60 seconds)..."
 fc_api PUT /actions '{"action_type": "InstanceStart"}' > /dev/null
 
-# Wait for the guest to become ready (poll for a ready file or fixed delay).
-# In production: replace with a gRPC health check to the guest agent.
-BOOT_TIMEOUT=30
+# Wait for the guest agent to be reachable via vsock before taking snapshot.
+# The guest agent listens on vsock port 8080 (AF_VSOCK CID_ANY).
+BOOT_TIMEOUT=60
+AGENT_READY=false
 for i in $(seq 1 $BOOT_TIMEOUT); do
   if ! kill -0 "$FC_PID" 2>/dev/null; then
     wait "$FC_PID" 2>/dev/null || true
@@ -180,10 +193,29 @@ for i in $(seq 1 $BOOT_TIMEOUT); do
     echo "ERROR: Firecracker exited before snapshot capture completed" >&2
     exit 1
   fi
+  # Try to connect to guest agent via vsock
+  if python3 -c "
+import socket, sys
+try:
+    s = socket.socket(40, socket.SOCK_STREAM)
+    s.settimeout(1)
+    s.connect((3, 8080))
+    s.close()
+    sys.exit(0)
+except Exception:
+    sys.exit(1)
+" 2>/dev/null; then
+    AGENT_READY=true
+    break
+  fi
   sleep 1
   echo -n "."
 done
 echo ""
+
+if [[ "$AGENT_READY" != "true" ]]; then
+  echo "WARNING: guest agent not reachable via vsock after ${BOOT_TIMEOUT}s (snapshot may still work)"
+fi
 echo "  VM booted"
 
 # ── Step 5: Pause VM and take snapshot ────────────────────────────────────────
@@ -195,8 +227,7 @@ echo "  VM paused"
 SNAP_RESPONSE=$(fc_api PUT /snapshot/create "{
   \"snapshot_type\": \"Full\",
   \"snapshot_path\": \"$SNAP_DIR/state\",
-  \"mem_file_path\": \"$SNAP_DIR/mem\",
-  \"version\": \"1.0.0\"
+  \"mem_file_path\": \"$SNAP_DIR/mem\"
 }")
 echo "  Snapshot response: $SNAP_RESPONSE"
 

@@ -4,7 +4,7 @@
 |---|---|
 | Platform | Linux (Debian/Ubuntu recommended), KVM enabled |
 | Firecracker mode | `real` — actual microVM execution |
-| Last updated | 2026-04-11 |
+| Last updated | 2026-04-12 |
 
 This runbook covers: KVM verification → repo setup → infrastructure → build a real Firecracker snapshot → upload to MinIO → load from MinIO → deploy a Nomad job → run Python code via the platform API.
 
@@ -69,7 +69,7 @@ nomad version   # Nomad v1.x
 **Install Firecracker + jailer:**
 
 ```bash
-FC_VERSION=v1.7.0
+FC_VERSION=v1.15.1
 ARCH=$(uname -m)
 curl -fL -o /tmp/firecracker.tgz \
   "https://github.com/firecracker-microvm/firecracker/releases/download/${FC_VERSION}/firecracker-${FC_VERSION}-${ARCH}.tgz"
@@ -78,7 +78,7 @@ sudo install /tmp/release-${FC_VERSION}-${ARCH}/firecracker-${FC_VERSION}-${ARCH
   /usr/bin/firecracker
 sudo install /tmp/release-${FC_VERSION}-${ARCH}/jailer-${FC_VERSION}-${ARCH} \
   /usr/bin/jailer
-firecracker --version   # Firecracker v1.7.0
+firecracker --version   # Firecracker v1.15.1
 ```
 
 > The binary path defaults to `/usr/bin/firecracker`. Override with:
@@ -183,7 +183,7 @@ Expected:
 
 > The `pool_size` value reflects `FC_POOL_SIZE` (default: `2`).
 >
-> **Known limitation (real mode):** `platform-api` currently starts with `storage=None` passed to `VMLifecycleManager` (`api/app.py:82`). In real mode, `VMLifecycleManager.start()` detects that `storage=None` and raises `RuntimeError` — the process **crashes on startup**, it does not fall back to sim mode. (The fallback-to-sim behavior exists only in `Runtime._warmup()` used by `fc-agent`, not in `VMLifecycleManager` used by `platform-api`.) A proper `MinioSnapshotStore` implementation needs to be wired in `api/app.py` before real-mode pool warmup works end-to-end. In the meantime, use `FC_MODE=sim` for local dev (section 3 of the macOS runbook) or pre-populate the snapshot cache manually (see section 4 below).
+> **Real-mode note:** `platform-api` wires a `SnapshotBlobStore` into `VMLifecycleManager` (`api/app.py`), so real-mode startup requires a reachable MinIO endpoint and a valid `platform-snapshots/python-v1` snapshot. If MinIO or the snapshot is missing, startup fails rather than silently falling back to sim mode. Use `FC_MODE=sim` for local dev without a snapshot, or build and upload a snapshot first (section 4).
 
 Troubleshoot: if MinIO is unreachable, confirm Docker is running and `docker compose ps` from `services/` shows port `9000->9000`.
 
@@ -196,12 +196,13 @@ A real Firecracker snapshot captures full VM state: CPU registers, memory, and d
 Recommended: use the helper scripts in `tools/snapshot-builder/`. Run from the repo root (`platform-docs/`):
 
 ```bash
-tools/snapshot-builder/test/test-snapshot-builder.sh
-
 mkdir -p /tmp/snapshots/python-v1
 
+# Download the Firecracker CI kernel with CONFIG_VIRTIO_VSOCKETS=y (built-in).
+# The old quickstart URL (img/quickstart_guide/…/vmlinux.bin) returns 404 — use
+# the versioned CI artifact instead:
 curl -fL -o /tmp/snapshots/vmlinux.bin \
-  "https://s3.amazonaws.com/spec.ccfc.min/img/quickstart_guide/x86_64/kernels/vmlinux.bin"
+  "https://s3.amazonaws.com/spec.ccfc.min/firecracker-ci/v1.15/x86_64/vmlinux-5.10.245"
 
 sudo bash tools/snapshot-builder/build-rootfs.sh \
   --name python-v1 \
@@ -209,7 +210,7 @@ sudo bash tools/snapshot-builder/build-rootfs.sh \
   --size 1024 \
   --out /tmp/snapshots/python-v1/rootfs.ext4
 
-bash tools/snapshot-builder/fc-snapshot.sh \
+sudo bash tools/snapshot-builder/fc-snapshot.sh \
   --name python-v1 \
   --rootfs /tmp/snapshots/python-v1/rootfs.ext4 \
   --kernel /tmp/snapshots/vmlinux.bin \
@@ -222,6 +223,16 @@ bash tools/snapshot-builder/upload-minio.sh \
   --rootfs /tmp/snapshots/python-v1/rootfs.ext4 \
   --endpoint http://localhost:9000
 ```
+
+> **Kernel requirement:** The kernel must have `CONFIG_VIRTIO_VSOCKETS=y` (built-in, not module).
+> The Firecracker CI kernel satisfies this; the host's system kernel (Debian/Ubuntu cloud image) has
+> it as a module only (`=m`) and will not support vsock in the guest.
+>
+> **Snapshot builder vsock warning:** `fc-snapshot.sh` prints
+> `WARNING: guest agent not reachable via vsock after 60s` even when the agent is working.
+> This is expected — the connectivity probe uses `AF_VSOCK` kernel sockets from the host, but
+> Firecracker exposes vsock to the host via a UDS proxy protocol, not kernel vsock.
+> The warning is safe to ignore if `[agent] listening on vsock:8080` appeared in the console output.
 
 Equivalent Make targets from the repo root:
 
@@ -238,16 +249,18 @@ The manual Firecracker API flow below is still useful for debugging the hypervis
 ```bash
 mkdir -p /tmp/fc-assets
 
-# Firecracker-optimized kernel (x86_64)
+# Firecracker CI kernel with vsock built-in (CONFIG_VIRTIO_VSOCKETS=y).
+# The quickstart vmlinux.bin URL (img/quickstart_guide/…) returns 404 — use
+# the versioned CI artifact:
 curl -fL -o /tmp/fc-assets/vmlinux \
-  "https://s3.amazonaws.com/spec.ccfc.min/img/quickstart_guide/x86_64/kernels/vmlinux.bin"
+  "https://s3.amazonaws.com/spec.ccfc.min/firecracker-ci/v1.15/x86_64/vmlinux-5.10.245"
 
 # Minimal rootfs (replace with a Python-preinstalled image for production use)
 curl -fL -o /tmp/fc-assets/rootfs.ext4 \
   "https://s3.amazonaws.com/spec.ccfc.min/img/quickstart_guide/x86_64/rootfs/bionic.rootfs.ext4"
 ```
 
-> These are Firecracker's public quickstart assets. For a Python runtime snapshot, use a rootfs with Python 3.12 pre-installed.
+> These are Firecracker's public quickstart assets. For a Python runtime snapshot, use the rootfs built by `build-rootfs.sh` which includes the guest agent at `/opt/agent/agent.py`.
 
 **4b. Start Firecracker via API socket**
 
@@ -271,7 +284,7 @@ curl -s -X PUT \
   -H "Content-Type: application/json" \
   -d "{
     \"kernel_image_path\": \"/tmp/fc-assets/vmlinux\",
-    \"boot_args\": \"console=ttyS0 reboot=k panic=1 pci=off init=/sbin/init\"
+    \"boot_args\": \"console=ttyS0 reboot=k panic=1 pci=off init=/opt/agent/agent.py\"
   }"
 
 # Set rootfs
@@ -587,9 +600,7 @@ FC_MODE=real \
   platform-api
 ```
 
-> `SNAPSHOT_NAME` and `SNAPSHOT_CACHE_DIR` are fc-agent env vars and have no effect on `platform-api`.
->
-> **`FC_SNAPSHOT_BUCKET` is the snapshot *name*, not the MinIO bucket name.** Despite its name, `config/settings.py` maps `FC_SNAPSHOT_BUCKET` to `snapshot_name` inside `VMLifecycleManager` — it controls which snapshot object is downloaded from MinIO (e.g. `python-v1`), not which bucket to use. The MinIO bucket is always controlled by `MINIO_BUCKET` (default: `platform-artifacts` for artifacts, `platform-snapshots` for snapshots). If you omit `FC_SNAPSHOT_BUCKET`, it defaults to `"platform-snapshots"` which will not match your uploaded snapshot and pool warmup will fail.
+> `SNAPSHOT_NAME` controls which snapshot is loaded from MinIO and must match the prefix uploaded in section 5 (e.g. `python-v1`). `FC_SNAPSHOT_BUCKET` controls the MinIO bucket name (default: `platform-snapshots`).
 
 **7b. Create a session**
 
@@ -656,11 +667,90 @@ curl -s -X POST http://localhost:8080/execute \
 
 ---
 
-## 8. Cleanup
+## 8. Deploy to GCP Nomad (remote production-like setup)
 
-Stop the Nomad job:
+For running on a remote GCP VM with Nomad rather than a local dev cluster, use the deploy script:
 
 ```bash
+tools/runbook/gcp-jumphost-nomad/gcloud/deploy-platform-api.sh
+```
+
+**Prerequisites on the GCP VM:**
+
+- Firecracker v1.15.1 at `/usr/bin/firecracker`
+- MinIO running at `127.0.0.1:9000` with bucket `platform-snapshots`
+- Python venv at `~/fc-agent-venv` with `sandbox-worker` deps installed
+- Nested virtualization enabled (`enableNestedVirtualization=true`, `n2-standard-4`, Intel Cascade Lake)
+- `/dev/kvm` accessible (`crw-rw-rw-`)
+
+**Build and upload the snapshot on the GCP VM (first time only):**
+
+```bash
+# SSH into Nomad VM
+gcloud compute ssh nomad --project=<project> --zone=<zone>
+
+# Download kernel
+sudo curl -fL -o /opt/platform/test-assets/vmlinux-5.10 \
+  "https://s3.amazonaws.com/spec.ccfc.min/firecracker-ci/v1.15/x86_64/vmlinux-5.10.245"
+
+# Build rootfs (requires Docker)
+sudo bash ~/platform-docs-runtime/tools/snapshot-builder/build-rootfs.sh \
+  --name python-v1 --out /var/sandbox/cache/python-v1.ext4
+
+# Build snapshot (takes 30-60s; the vsock WARNING at end is expected)
+sudo bash /tmp/fc-snapshot.sh \
+  --kernel /opt/platform/test-assets/vmlinux-5.10 \
+  --rootfs /var/sandbox/cache/python-v1.ext4 \
+  --name python-v1 --out-dir /var/sandbox/snapshots
+
+# Upload to MinIO
+mc alias set local http://127.0.0.1:9000 minioadmin minioadmin
+mc cp /var/sandbox/snapshots/python-v1/state  local/platform-snapshots/python-v1/vmstate.bin
+mc cp /var/sandbox/snapshots/python-v1/mem    local/platform-snapshots/python-v1/memory.bin
+mc cp /var/sandbox/snapshots/python-v1/meta.json local/platform-snapshots/python-v1/meta.json
+```
+
+**Deploy platform-api:**
+
+```bash
+# From your laptop:
+SNAPSHOT_NAME=python-v1 \
+  bash tools/runbook/gcp-jumphost-nomad/gcloud/deploy-platform-api.sh
+```
+
+The script syncs `sandbox-worker/src` to the VM, submits a Nomad job with `FC_MODE=real`, and runs a smoke test. On success you will see:
+
+```
+session: <uuid>
+{"job_id": "...", "status": "completed", "output": "{\"stdout\": \"hello from real VM\\n\", ...}"}
+```
+
+**Hit from your laptop:**
+
+```bash
+# Health
+curl http://<VM_PUBLIC_IP>:8080/health
+
+# Execute
+SESSION=$(curl -sS -X POST http://<VM_PUBLIC_IP>:8080/sessions \
+  -H "Content-Type: application/json" -d '{"runtime":"microvm"}' \
+  | python3 -c "import json,sys; print(json.load(sys.stdin)['session_id'])")
+
+curl -sS -X POST http://<VM_PUBLIC_IP>:8080/execute \
+  -H "Content-Type: application/json" \
+  -d "{\"session_id\":\"$SESSION\",\"tool\":\"python_run\",\"input\":{\"code\":\"print('hello from GCP Firecracker')\"}}"
+```
+
+> **Orphan process cleanup:** If platform-api is redeployed, run `sudo pkill -x firecracker` on the VM first. Nomad's `raw_exec` driver does not kill child processes spawned by the task.
+
+---
+
+## 9. Cleanup
+
+Stop Nomad jobs:
+
+```bash
+nomad job stop -purge platform-api 2>/dev/null || true
 nomad job stop -purge sandbox-worker-linux 2>/dev/null || true
 ```
 
